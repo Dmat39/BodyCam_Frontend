@@ -5,6 +5,7 @@ import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import Layout from '../Pages/Layout';
 import Inicio from '../Pages/Inicio';
 import ControlBodycam from '../Pages/ControlBody/Controlbodycam';
+import BaseDatos from '../Pages/BaseDeDatos/Base_Datos';
 
 const AppRouter = () => {
     const router = createBrowserRouter([
@@ -19,6 +20,10 @@ const AppRouter = () => {
                 {
                     path: "/control_bodycam",
                     element: <PrivateRouter element={<ControlBodycam />} />,
+                },
+                {
+                    path: "/base_datos",
+                    element: <PrivateRouter element={<BaseDatos />} />,
                 },
             ]
         },

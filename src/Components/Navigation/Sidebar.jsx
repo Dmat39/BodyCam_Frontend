@@ -1,14 +1,16 @@
-import React from 'react'
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sidebar as ProSidebar, Menu, MenuItem, SubMenu } from 'react-pro-sidebar';
-import Logo from "../../assets/logos/logo_sjl.png"
+import { Sidebar as ProSidebar, Menu, MenuItem } from 'react-pro-sidebar';
+import Logo from "../../assets/logos/logo_sjl.png";
 import { Fragment, useState } from 'react';
 import { Typography } from '@mui/material';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import VideocamIcon from '@mui/icons-material/Videocam'; // Nuevo icono para Control de Bodycam
+import StorageIcon from '@mui/icons-material/Storage'; // Nuevo icono para Base de Datos
 
 const Sidebar = ({ toggled, setToggled }) => {
-  const [Collapsed, setCollapsed] = useState(false)
+  const [Collapsed, setCollapsed] = useState(false);
 
   const MenuItems = [
     {
@@ -21,11 +23,18 @@ const Sidebar = ({ toggled, setToggled }) => {
     {
       id: 2,
       label: 'Control de Bodycam',
-      icon: DashboardIcon,
+      icon: VideocamIcon,
       link: '/control_bodycam',
       target: '_self'
     },
-  ]
+    {
+      id: 3,
+      label: 'Base de Datos',
+      icon: StorageIcon,
+      link: '/base_datos',
+      target: '_self'
+    },
+  ];
 
   return (
     <div className='relative h-full w-max bg-slate-500 z-[1200]'>
@@ -45,51 +54,13 @@ const Sidebar = ({ toggled, setToggled }) => {
         </Link>
         {
           MenuItems.map((item) => (
-            item.children ? (
-              <Fragment key={item.id} >
-                <div style={{ padding: '0 24px', marginBottom: '8px', marginTop: '32px' }}>
-                  <Typography
-                    variant="body2"
-                    className='text-nowrap flex items-center gap-1'
-                    fontWeight={600}
-                    style={{ opacity: Collapsed ? 0 : 0.7, letterSpacing: '0.5px' }}
-                  >
-                    <item.icon />{item.label}
-                  </Typography>
-                </div>
-                <Menu menuItemStyles={menuItemStyles}>
-                  {item.children?.map((child) => (
-                    child.children ? (
-                      <SubMenu key={child.id} label={child.label} icon={<child.icon />}>
-                        {child.children.map((child) => (
-                          <MenuItem key={child.id} component={<Link to={child.link} target={child.target} />}>
-                            {child.label}
-                          </MenuItem>
-                        ))}
-                      </SubMenu>
-                    ) : (
-                      <MenuItem key={child.id} component={<Link to={child.link} target={child.target} />} icon={<child.icon />}>
-                        {child.label}
-                      </MenuItem>
-                    )
-                  ))}
-                </Menu>
-              </Fragment>
-            )
-              :
-              (
-                <Menu menuItemStyles={menuItemStyles} key={item.id}>
-                  <MenuItem component={<Link to={item.link} target={item.target} />} icon={<item.icon />}>
-                    {item.label}
-                  </MenuItem>
-                </Menu>
-              )
+            <Menu key={item.id} menuItemStyles={menuItemStyles}>
+              <MenuItem component={<Link to={item.link} target={item.target} />} icon={<item.icon />}>
+                {item.label}
+              </MenuItem>
+            </Menu>
           ))
         }
-
-        <Menu >
-
-        </Menu>
       </ProSidebar>
       <div
         className='justify-center items-center absolute cursor-pointer top-[100px] right-[-10px] rounded-full h-6 w-6 bg-[#0098e5] text-white z-10 hidden md:flex'
@@ -100,11 +71,10 @@ const Sidebar = ({ toggled, setToggled }) => {
         />
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Sidebar
-
+export default Sidebar;
 
 const themes = {
   light: {
@@ -133,12 +103,6 @@ const menuItemStyles = {
   },
   icon: {
     color: themes.light.menu.icon,
-  },
-  SubMenuExpandIcon: {
-    color: '#b6b7b9',
-  },
-  subMenuContent: {
-    backgroundColor: 'transparent',
   },
   button: {
     '&:hover': {

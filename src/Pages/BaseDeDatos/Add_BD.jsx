@@ -6,7 +6,7 @@ import { useFormik } from 'formik';
 import CustomSwal, { swalError } from '../../helpers/swalConfig';
 import { socket } from '../../Components/Socket/socket';
 
-const AddBodycam = () => {
+const Add_BD = () => {
   const [open, setOpen] = useState(false);
 
   const handleClose = () => {
@@ -17,16 +17,10 @@ const AddBodycam = () => {
   const formik = useFormik({
     initialValues: {
       user: '',
-      bodycamSeries: '',
-      batterySeries: '',
-      deliveryDate: '',
-      deliveryTime: '',
-      responsible: '',
-      shift: '',
-      jurisdiction: '',
-      unit: '',
-      returnDate: '',
-      returnTime: '',
+      series: '',
+      battery: '',
+      model: '',
+      item: '',
     },
     validate: (values) => {
       const errors = {};
@@ -36,9 +30,9 @@ const AddBodycam = () => {
       return errors;
     },
     onSubmit: (values) => {
-      socket.emit('addBodycam', values, (response) => {
+      socket.emit('addBD', values, (response) => {
         if (response.status === 'success') {
-          CustomSwal.fire('Agregado', 'La bodycam ha sido agregada correctamente.', 'success');
+          CustomSwal.fire('Agregado', 'El BD ha sido agregado correctamente.', 'success');
           handleClose();
         } else {
           swalError(response.error);
@@ -49,7 +43,7 @@ const AddBodycam = () => {
 
   return (
     <>
-      <Tooltip title="Añadir Bodycam" placement="top" arrow>
+      <Tooltip title="Añadir BD" placement="top" arrow>
         <IconButton aria-label="add" onClick={() => setOpen(true)} color="primary">
           <AddIcon fontSize="large" />
         </IconButton>
@@ -58,22 +52,16 @@ const AddBodycam = () => {
       <CustomModal Open={open} setOpen={setOpen} handleClose={handleClose}>
         <Box className="p-5">
           <Typography variant="h6" fontWeight="bold" className="text-center">
-            Añadir Bodycam
+            Añadir BD
           </Typography>
 
           <form onSubmit={formik.handleSubmit} className="mt-4">
             <Box className="grid grid-cols-2 gap-4">
               <TextField label="Usuario" name="user" {...formik.getFieldProps('user')} fullWidth />
-              <TextField label="Serie Bodycam" name="bodycamSeries" {...formik.getFieldProps('bodycamSeries')} fullWidth />
-              <TextField label="Serie Batería" name="batterySeries" {...formik.getFieldProps('batterySeries')} fullWidth />
-              <TextField label="Fecha Entrega" name="deliveryDate" type="date" {...formik.getFieldProps('deliveryDate')} fullWidth InputLabelProps={{ shrink: true }} />
-              <TextField label="Hora Entrega" name="deliveryTime" type="time" {...formik.getFieldProps('deliveryTime')} fullWidth InputLabelProps={{ shrink: true }} />
-              <TextField label="Responsable" name="responsible" {...formik.getFieldProps('responsible')} fullWidth />
-              <TextField label="Turno" name="shift" {...formik.getFieldProps('shift')} fullWidth />
-              <TextField label="Jurisdicción" name="jurisdiction" {...formik.getFieldProps('jurisdiction')} fullWidth />
-              <TextField label="Unidad" name="unit" {...formik.getFieldProps('unit')} fullWidth />
-              <TextField label="Fecha Devolución" name="returnDate" type="date" {...formik.getFieldProps('returnDate')} fullWidth InputLabelProps={{ shrink: true }} />
-              <TextField label="Hora Devolución" name="returnTime" type="time" {...formik.getFieldProps('returnTime')} fullWidth InputLabelProps={{ shrink: true }} />
+              <TextField label="Serie" name="series" {...formik.getFieldProps('series')} fullWidth />
+              <TextField label="Batería" name="battery" {...formik.getFieldProps('battery')} fullWidth />
+              <TextField label="Modelo" name="model" {...formik.getFieldProps('model')} fullWidth />
+              <TextField label="Ítem" name="item" {...formik.getFieldProps('item')} fullWidth />
             </Box>
 
             <Box className="flex justify-between pt-5">
@@ -91,4 +79,4 @@ const AddBodycam = () => {
   );
 };
 
-export default AddBodycam;
+export default Add_BD;
