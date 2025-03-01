@@ -29,7 +29,7 @@ const ControlBody = ({ moduleName }) => {
             setCount(bodycams.length);
         });
 
-        // Simular datos de prueba después de 2 segundos
+        // Simular datos 
         setTimeout(() => {
             const fakeData = [
                 { usuario: 'SG075', serie: '23726A0019', bateria: '2372600484', modelo: 'VM780', item: 'BODYCAM' },

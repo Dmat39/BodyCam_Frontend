@@ -16,7 +16,7 @@ const Add_BD = () => {
 
   const formik = useFormik({
     initialValues: {
-      user: '',
+      user: 'SG-',  // Valor por defecto con el prefijo
       series: '',
       battery: '',
       model: '',
@@ -57,7 +57,19 @@ const Add_BD = () => {
 
           <form onSubmit={formik.handleSubmit} className="mt-4">
             <Box className="grid grid-cols-2 gap-4">
-              <TextField label="Usuario" name="user" {...formik.getFieldProps('user')} fullWidth />
+              <TextField
+                label="Usuario"
+                name="user"
+                value={formik.values.user}
+                onChange={(e) => {
+                  // Evitar que se borre el prefijo "SG -"
+                  const inputValue = e.target.value;
+                  if (inputValue.startsWith('SG-')) {
+                    formik.setFieldValue('user', inputValue);
+                  }
+                }}
+                fullWidth
+              />
               <TextField label="Serie" name="series" {...formik.getFieldProps('series')} fullWidth />
               <TextField label="Batería" name="battery" {...formik.getFieldProps('battery')} fullWidth />
               <TextField label="Modelo" name="model" {...formik.getFieldProps('model')} fullWidth />
