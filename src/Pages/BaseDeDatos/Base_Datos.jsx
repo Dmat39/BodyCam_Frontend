@@ -9,7 +9,7 @@ import { FormControl, InputAdornment, InputLabel, Input, IconButton, Tooltip } f
 import usePermissions from '../../Components/hooks/usePermission';
 import { useSelector } from 'react-redux';
 import UseUrlParamsManager from '../../Components/hooks/UseUrlParamsManager';
-import AddBD from './Add_BD'; // Importamos el nuevo componente
+import AddBD from './Add_BD'; // Componente para agregar una nueva bodycam
 
 const ControlBody = ({ moduleName }) => {
     const { canCreate } = usePermissions(moduleName);
@@ -22,35 +22,45 @@ const ControlBody = ({ moduleName }) => {
     const timeoutRef = useRef(null);
 
     useEffect(() => {
-        socket.emit('authenticate', { token });
-
-        socket.on('updateBodycams', (bodycams) => {
-            setData(bodycams);
-            setCount(bodycams.length);
+        let isMounted = true;
+    
+        socket.emit("getAllBodys", {}, (response) => {
+            if (isMounted) {
+                console.log("Respuesta de getAllBodys:", response);
+                if (response?.data) {
+                    setData(response.data);
+                    setCount(response.data.length);
+                }
+            }
         });
-
-        // Simular datos 
-        setTimeout(() => {
-            const fakeData = [
-                { usuario: 'SG075', serie: '23726A0019', bateria: '2372600484', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG073', serie: '23726A0017', bateria: '2372600533', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG070', serie: '23726A0014', bateria: '2372600177', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG067', serie: '23726A0011', bateria: '2372600284', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG072', serie: '23726A0016', bateria: '2372600463', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG078', serie: '23726A0019', bateria: '2372600484', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG079', serie: '23726A0017', bateria: '2372600533', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG007', serie: '23726A0014', bateria: '2372600177', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG167', serie: '23726A0011', bateria: '2372600284', modelo: 'VM780', item: 'BODYCAM' },
-                { usuario: 'SG172', serie: '23726A0016', bateria: '2372600463', modelo: 'VM780', item: 'BODYCAM' }
-            ];
-            setData(fakeData);
-            setCount(fakeData.length);
-        }, 2000);
-
+    
+        const handleListaAllBodys = (response) => {
+            console.log("Evento recibido en el frontend:", response);
+            if (response?.data) {
+                setData(response.data);
+                setCount(response.data.length);
+            }
+        };
+    
+        socket.off("listaallbodys"); // Elimina cualquier suscripción previa
+        socket.on("listaallbodys", handleListaAllBodys);
+    
         return () => {
-            socket.off('updateBodycams');
+            isMounted = false;
+            socket.off("listaallbodys", handleListaAllBodys);
         };
     }, [token]);
+
+    const handleRefresh = () => {
+        socket.emit('addBodycam', values, (response) => {
+            if (response?.status === 'success') {
+              CustomSwal.fire('Agregado', 'La bodycam ha sido agregada correctamente.', 'success');
+              handleClose();
+            } else {
+              swalError(response?.error || 'Error desconocido');
+            }
+          });
+    };
 
     const handleSearchChange = (event) => {
         const value = event.target.value;
@@ -81,7 +91,7 @@ const ControlBody = ({ moduleName }) => {
                         </div>
                         <div className='w-full flex items-center justify-end gap-3'>
                             <Tooltip title="Refrescar" placement='top' arrow>
-                                <IconButton aria-label="refresh">
+                                <IconButton aria-label="refresh" onClick={handleRefresh}>
                                     <RefreshRoundedIcon />
                                 </IconButton>
                             </Tooltip>
@@ -98,10 +108,22 @@ const ControlBody = ({ moduleName }) => {
                                     }
                                 />
                             </FormControl>
-                            {canCreate && <AddBD />} {/* Botón para agregar una bodycam */}
+                            {canCreate && <AddBD />}
                         </div>
                     </div>
-                    <CRUDTable data={data} loading={!data.length} count={count} />
+                    <CRUDTable
+                        key={data.length} // Se fuerza la actualización al cambiar los datos
+                        data={data}
+                        loading={!data.length}
+                        count={count}
+                        columns={[
+                            { title: "Número", field: "numero" },
+                            { title: "Serie", field: "serie" },
+                            { title: "Batería", field: "bateria" },
+                            { title: "Proveedor", field: "proveedor" },
+                            { title: "Estado", field: "state" }
+                        ]}
+                    />
                 </div>
             </main>
         </div>
