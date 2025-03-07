@@ -10,6 +10,12 @@ export const socket = io(URL, {
     reconnectionDelay: 2000, // Espera 2 segundos antes de intentar reconectar
 });
 
+// Authentication middleware
+export const authenticateSocket = (token) => {
+    socket.auth = { token };
+    socket.connect();
+  };
+  
 // Debug para verificar la conexión
 socket.on("connect", () => {
     console.log("✅ Conectado a Socket.io en:", URL, "con ID:", socket.id);
