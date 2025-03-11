@@ -1,55 +1,65 @@
-import React, { useEffect, useRef, useState } from 'react';
+// ControlBody.jsx
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded';
 import CRUDTable from '../../Components/Table/CRUDTable';
 import { socket, authenticateSocket } from '../../Components/Socket/socket';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SearchIcon from '@mui/icons-material/Search';
-import { FormControl, InputAdornment, InputLabel, Input, IconButton, Tooltip } from '@mui/material';
+import {
+  FormControl,
+  InputAdornment,
+  InputLabel,
+  Input,
+  IconButton,
+  Tooltip,
+  Snackbar,
+  Alert
+} from '@mui/material';
 import usePermissions from '../../Components/hooks/usePermission';
 import { useSelector } from 'react-redux';
 import UseUrlParamsManager from '../../Components/hooks/UseUrlParamsManager';
 import AddBodycam from './AddBodycam';
+import MissingFieldsModal from './CustomModal'; // Importa el modal
 
 const ControlBody = ({ moduleName }) => {
   const { canCreate } = usePermissions(moduleName);
   const { token } = useSelector((state) => state.auth);
-  const { addParams } = UseUrlParamsManager();
+  const { addParams, getParams } = UseUrlParamsManager();
   const navigate = useNavigate();
   const [data, setData] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(getParams('search') || '');
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
   const timeoutRef = useRef(null);
 
+  // Estados para el modal
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
 
-  const handleUpdateControlBodys = (response) => {
+  // Función para transformar la respuesta del servidor y actualizar el estado
+  const handleUpdateControlBodys = useCallback((response) => {
+    console.log("📥 Respuesta del servidor:", response);
+
     if (response.status === 200 && response.data) {
-      const { data: rows = [], totalCount = 0 } = response.data;
+      const rows = response.data.data || [];
+      const totalCount = response.data.totalCount || 0;
 
       const transformedRows = rows.map(row => ({
-        id: row.id, // Asegúrate de conservar el id único de la fila
-        // 1. Identificador de la BodyCam (número)
-        bodyCams: row.bodyCams?.numero || '',
-        // 2. Nombre completo de la Persona que usa la BodyCam
+        id: row.id,
+        bodyCams: row.bodyCams?.numero || row.id_Body || '',
         Personas: row.Personas ? `${row.Personas.nombres} ${row.Personas.apellidos}` : '',
-        // 3. Fecha y 4. Hora de entrega
         fecha_entrega: row.fecha_entrega || '',
         hora_entrega: row.hora_entrega || '',
-        // 8. Jurisdicción (nombre)
         Jurisdiccions: row.Jurisdiccions?.jurisdiccion || '',
-        // 9. Unidad (número)
         Unidads: row.Unidads?.numero || '',
-        // 10. Función (nombre)
         funcions: row.funcions?.funcion || '',
-        // 5. Fecha y 6. Hora de devolución
         fecha_devolucion: row.fecha_devolucion || '',
         hora_devolucion: row.hora_devolucion || '',
-        // 11. Detalles adicionales
         detalles: row.detalles || '',
-        // 7. Estado (status)
         status: row.status || '',
-
       }));
 
       setData(transformedRows);
@@ -57,38 +67,27 @@ const ControlBody = ({ moduleName }) => {
     } else {
       setData([]);
       setCount(0);
+      setError(response.message || 'Error al cargar datos');
+      setOpenSnackbar(true);
     }
     setLoading(false);
-  };
-  // Fetch initial data and set up socket listeners
-  useEffect(() => {
-    // Autenticar y conectar el socket
-    authenticateSocket(token);
+  }, []);
 
+  // Emitir el evento para obtener datos iniciales
+  const fetchInitialData = useCallback(() => {
+    if (!socket.connected) {
+      console.warn("⚠️ El socket no está conectado.");
+      setError("El servidor no está disponible");
+      setOpenSnackbar(true);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    console.log("📡 Solicitando ControlBodys...");
+    socket.emit("getAllControlBodys", { page: 1, limit: 20 });
+  }, []);
 
-
-    // Obtener datos iniciales
-    const fetchInitialData = () => {
-      socket.emit('getAllControlBodys', { page: 1, limit: 20 }, (response) => {
-        handleUpdateControlBodys(response);
-      });
-    };
-
-    // Escuchar ambos eventos para actualizaciones
-    socket.on('updateControlBodys', handleUpdateControlBodys);
-    socket.on('ControlBodys', handleUpdateControlBodys);
-
-    // Cargar datos iniciales
-    fetchInitialData();
-
-    // Cleanup: remover listeners al desmontar
-    return () => {
-      socket.off('updateControlBodys', handleUpdateControlBodys);
-      socket.off('ControlBodys', handleUpdateControlBodys);
-    };
-  }, [token]);
-
-  // Search handling
+  // Manejo del cambio en el input de búsqueda
   const handleSearchChange = (event) => {
     const value = event.target.value;
     setSearchTerm(value);
@@ -99,23 +98,108 @@ const ControlBody = ({ moduleName }) => {
 
     timeoutRef.current = setTimeout(() => {
       addParams({ search: value.trim() });
-      // Optionally, implement server-side search
-      // socket.emit('searchControlBodys', { searchTerm: value.trim() });
+      // Aquí podrías implementar la búsqueda en el servidor si el backend lo soporta
     }, 800);
   };
 
-  // Refresh handler
-  const handleRefresh = () => {
+  // Handler para refrescar la información
+  const handleRefresh = useCallback(() => {
     setLoading(true);
-    socket.emit('getAllControlBodys', { page: 1, limit: 20 }, (response) => {
-      handleUpdateControlBodys(response);
-    });
+    setError(null);
+    socket.emit("getAllControlBodys", { page: 1, limit: 20 });
+  }, []);
+
+  // Cerrar snackbar
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setOpenSnackbar(false);
   };
 
+  // Manejar reconexión del socket
+  const handleSocketReconnect = useCallback(() => {
+    console.log("Socket reconectado, actualizando datos...");
+    authenticateSocket(token);
+    fetchInitialData();
+  }, [token, fetchInitialData]);
+  useEffect(() => {
+    authenticateSocket(token);
+
+    const handleResponse = (response) => {
+      if (typeof response !== "object" || response === null) {
+        console.error("❌ Respuesta inválida del servidor:", response);
+        setError("Respuesta inválida del servidor");
+        setOpenSnackbar(true);
+        setLoading(false);
+        return;
+      }
+      console.log("🔄 Respuesta del servidor:", response);
+      if (response.status === 200) {
+        handleUpdateControlBodys(response);
+      } else {
+        console.error("⚠️ Error al obtener ControlBodys:", response.message);
+        setError(response.message || "Error al obtener datos");
+        setOpenSnackbar(true);
+        setLoading(false);
+      }
+    };
+
+    // Nuevo listener para la respuesta de actualización
+    const handleBodycamActualizada = (response) => {
+      console.log("Respuesta de actualización:", response);
+      if (response.status === 200) {
+        // Por ejemplo, refrescamos la tabla para ver la actualización
+        handleRefresh();
+      } else {
+        setError(response.message || "Error en la actualización");
+        setOpenSnackbar(true);
+      }
+    };
+
+    socket.on("getAllControlBodysResponse", handleResponse);
+    socket.on("ControlBodys", handleUpdateControlBodys);
+    socket.on("bodycamActualizada", handleBodycamActualizada);
+    socket.on("connect", handleSocketReconnect);
+    socket.on("disconnect", () => {
+      console.warn("⚠️ Socket desconectado");
+      setError("Se ha perdido la conexión con el servidor");
+      setOpenSnackbar(true);
+    });
+
+    fetchInitialData();
+
+    return () => {
+      socket.off("getAllControlBodysResponse", handleResponse);
+      socket.off("ControlBodys", handleUpdateControlBodys);
+      socket.off("bodycamActualizada", handleBodycamActualizada);
+      socket.off("connect", handleSocketReconnect);
+      socket.off("disconnect");
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [token, handleUpdateControlBodys, fetchInitialData, handleSocketReconnect]);
+
+  // Función para abrir el modal al hacer clic en la acción de la fila
+  const handleEditMissing = (row) => {
+    setSelectedRow(row);
+    setModalOpen(true);
+  };
+
+  // Función que se ejecuta al guardar desde el modal
+  const handleModalSave = (updatedData) => {
+    // updatedData incluye fecha_devolucion, hora_devolucion, detalles, status
+    const payload = {
+      numero: selectedRow.bodyCams, // Ajusta si tu backend usa 'numero' para buscar
+      ...updatedData,
+    };
+   
+    socket.emit("ActualizarControlBodys", payload);
+  
+    setModalOpen(false);
+    setSelectedRow(null);
+  };
+  
 
   return (
     <div className='h-full flex flex-col w-full bg-gray-100 p-4'>
-      {/* ... (previous header code remains the same) ... */}
       <header className="text-white bg-green-700 py-4 px-3 mb-6 w-full rounded-lg flex justify-center relative">
         <Link onClick={() => navigate(-1)} className='flex items-center gap-1'>
           <ArrowBackIosNewRoundedIcon className='!size-5 md:!size-6 mt-[0.1rem] absolute left-4' />
@@ -132,8 +216,12 @@ const ControlBody = ({ moduleName }) => {
             </div>
             <div className='w-full flex items-center justify-end gap-3'>
               <Tooltip title="Refrescar" placement='top' arrow>
-                <IconButton aria-label="refresh" onClick={handleRefresh}>
-                  <RefreshRoundedIcon />
+                <IconButton
+                  aria-label="refresh"
+                  onClick={handleRefresh}
+                  disabled={loading}
+                >
+                  <RefreshRoundedIcon className={loading ? 'animate-spin' : ''} />
                 </IconButton>
               </Tooltip>
               <FormControl variant="standard" size='small' className='w-full max-w-full md:max-w-sm'>
@@ -142,6 +230,7 @@ const ControlBody = ({ moduleName }) => {
                   id="input-with-icon-adornment"
                   value={searchTerm}
                   onChange={handleSearchChange}
+                  disabled={loading}
                   startAdornment={
                     <InputAdornment position="start">
                       <SearchIcon />
@@ -152,13 +241,48 @@ const ControlBody = ({ moduleName }) => {
               {canCreate && <AddBodycam />}
             </div>
           </div>
-          <CRUDTable
-            data={data}
-            loading={loading}
-            count={count}
-          />
+          <div className='relative h-full'>
+            {loading && (
+              <div className='absolute inset-0 bg-white bg-opacity-60 flex items-center justify-center z-10'>
+                <div className='animate-pulse text-green-700 font-semibold'>Cargando...</div>
+              </div>
+            )}
+            {/* 
+              Asumamos que en el componente CRUDTable puedes definir acciones personalizadas.
+              Por ejemplo, se puede agregar una columna de “Acciones” que incluya un botón para 
+              editar los campos faltantes. Cuando se hace clic, se llama a handleEditMissing con la fila.
+              Si CRUDTable no soporta esto de forma nativa, tendrás que modificarlo para incluir esa columna.
+            */}
+            <CRUDTable
+              data={data}
+              loading={loading}
+              count={count}
+              onEdit={handleEditMissing} // Función que se invoca al hacer clic en el botón de la fila
+            />
+          </div>
         </div>
       </main>
+
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
+
+      {/* Renderizar el modal cuando se haya seleccionado una fila */}
+      {selectedRow && (
+        <MissingFieldsModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          rowData={selectedRow}
+          onSave={handleModalSave}
+        />
+      )}
     </div>
   );
 };
