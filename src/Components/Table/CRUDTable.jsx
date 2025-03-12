@@ -4,7 +4,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
 import { SortData } from '../../helpers/GeneralFunctions';
-import CustomTablePagination from '../Pagination/TablePagination';
+import CustomTablePagination from '../../Pages/Pagination/TablePagination';
 import { useLocation } from 'react-router-dom';
 
 // Función auxiliar para obtener el valor de un objeto de búsqueda

@@ -39,6 +39,13 @@ const ControlBody = ({ moduleName }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
 
+  useEffect(() => {
+    const params = getParams();
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 20;
+    socket.emit("getAllControlBodys", { page, limit });
+  }, [location.search]);
+
   // Función para transformar la respuesta del servidor y actualizar el estado
   const handleUpdateControlBodys = useCallback((response) => {
     console.log("📥 Respuesta del servidor:", response);
@@ -190,13 +197,13 @@ const ControlBody = ({ moduleName }) => {
       numero: selectedRow.bodyCams, // Ajusta si tu backend usa 'numero' para buscar
       ...updatedData,
     };
-   
+
     socket.emit("ActualizarControlBodys", payload);
-  
+
     setModalOpen(false);
     setSelectedRow(null);
   };
-  
+
 
   return (
     <div className='h-full flex flex-col w-full bg-gray-100 p-4'>

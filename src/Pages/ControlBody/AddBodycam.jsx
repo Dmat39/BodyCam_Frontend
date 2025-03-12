@@ -43,11 +43,13 @@ const JURISDICCIONES = [
   "Mariscal Caceres",
 ];
 
-const API_KEY = "972cbc17838710f8179133d624ed3c4646034b2bcbbea6dfe5da154fd4f046a6";
+// Cargar variables desde el .env
+const API_URL = import.meta.env.VITE_TAREAJE_API_URL;
+const API_KEY = import.meta.env.VITE_TAREAJE_API_KEY;
 
 // Función para obtener datos del empleado por DNI
 async function fetchEmpleadoData(dni) {
-  const url = `https://backendtareaje.munisjl.gob.pe/empleados/app/${dni}`;
+  const url = `${API_URL}${dni}`;
   try {
     const response = await fetch(url, {
       headers: {
@@ -58,8 +60,6 @@ async function fetchEmpleadoData(dni) {
       throw new Error("Error al obtener datos del empleado");
     }
     const result = await response.json();
-    // Aquí la respuesta tiene { message, data: {...} }
-    // Te interesa la propiedad "data"
     return result.data;
   } catch (error) {
     console.error(error);
