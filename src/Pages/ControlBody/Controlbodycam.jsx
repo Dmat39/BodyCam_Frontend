@@ -1,4 +1,3 @@
-// ControlBody.jsx
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded';
@@ -20,7 +19,7 @@ import usePermissions from '../../Components/hooks/usePermission';
 import { useSelector } from 'react-redux';
 import UseUrlParamsManager from '../../Components/hooks/UseUrlParamsManager';
 import AddBodycam from './AddBodycam';
-import MissingFieldsModal from './CustomModal'; // Importa el modal
+import MissingFieldsModal from './CustomModal';
 
 const ControlBody = ({ moduleName }) => {
   const { canCreate } = usePermissions(moduleName);
@@ -34,6 +33,7 @@ const ControlBody = ({ moduleName }) => {
   const [error, setError] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const timeoutRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Estados para el modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -43,6 +43,7 @@ const ControlBody = ({ moduleName }) => {
     const params = getParams();
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 20;
+    setCurrentPage(page); // Actualiza el estado con la página de la URL
     socket.emit("getAllControlBodys", { page, limit });
   }, [location.search]);
 
@@ -51,8 +52,11 @@ const ControlBody = ({ moduleName }) => {
     console.log("📥 Respuesta del servidor:", response);
 
     if (response.status === 200 && response.data) {
-      const rows = response.data.data || [];
-      const totalCount = response.data.totalCount || 0;
+      let rows = response.data.data || [];
+      let totalCount = response.data.totalCount || 0;
+
+      // Ordenar por ID o fecha de creación
+      rows = rows.sort((a, b) => a.id - b.id);
 
       const transformedRows = rows.map(row => ({
         id: row.id,
@@ -60,6 +64,7 @@ const ControlBody = ({ moduleName }) => {
         Personas: row.Personas ? `${row.Personas.nombres} ${row.Personas.apellidos}` : '',
         fecha_entrega: row.fecha_entrega || '',
         hora_entrega: row.hora_entrega || '',
+        turno: row.Horarios?.turno || row.id_turno || '', // Añadida la columna de turno
         Jurisdiccions: row.Jurisdiccions?.jurisdiccion || '',
         Unidads: row.Unidads?.numero || '',
         funcions: row.funcions?.funcion || '',
@@ -91,8 +96,8 @@ const ControlBody = ({ moduleName }) => {
     }
     setLoading(true);
     console.log("📡 Solicitando ControlBodys...");
-    socket.emit("getAllControlBodys", { page: 1, limit: 20 });
-  }, []);
+    socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
+  }, [currentPage]);
 
   // Manejo del cambio en el input de búsqueda
   const handleSearchChange = (event) => {
@@ -113,8 +118,8 @@ const ControlBody = ({ moduleName }) => {
   const handleRefresh = useCallback(() => {
     setLoading(true);
     setError(null);
-    socket.emit("getAllControlBodys", { page: 1, limit: 20 });
-  }, []);
+    socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
+  }, [currentPage]);
 
   // Cerrar snackbar
   const handleCloseSnackbar = (event, reason) => {
@@ -128,6 +133,7 @@ const ControlBody = ({ moduleName }) => {
     authenticateSocket(token);
     fetchInitialData();
   }, [token, fetchInitialData]);
+  
   useEffect(() => {
     authenticateSocket(token);
 
@@ -162,9 +168,37 @@ const ControlBody = ({ moduleName }) => {
       }
     };
 
+    const handleControlBodysUpdated = (data) => {
+      console.log("Notificación de actualización de ControlBodys:", data);
+      // Si recibimos la notificación, solicitamos los datos actualizados para la página actual
+      socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
+    };
+
+    // Listener para respuesta después de actualizar un ControlBody
+    const handleActualizarControlBodysResponse = (response) => {
+      console.log("Respuesta de ActualizarControlBodys:", response);
+      if (response && response.status === 200) {
+        handleRefresh();
+        setOpenSnackbar(true);
+        setError(null);
+      } else {
+        setError(response?.message || "Error al actualizar el control de bodycam");
+        setOpenSnackbar(true);
+      }
+    };
+
+    // Listener para respuesta después de obtener un ControlBody específico
+    const handleGetControlBodyResponse = (response) => {
+      console.log("Respuesta de getControlBody:", response);
+      // Aquí puedes manejar la respuesta si es necesario
+    };
+
     socket.on("getAllControlBodysResponse", handleResponse);
     socket.on("ControlBodys", handleUpdateControlBodys);
     socket.on("bodycamActualizada", handleBodycamActualizada);
+    socket.on("controlBodysUpdated", handleControlBodysUpdated);
+    socket.on("getControlBody", handleGetControlBodyResponse);
+    socket.on("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
     socket.on("connect", handleSocketReconnect);
     socket.on("disconnect", () => {
       console.warn("⚠️ Socket desconectado");
@@ -178,11 +212,14 @@ const ControlBody = ({ moduleName }) => {
       socket.off("getAllControlBodysResponse", handleResponse);
       socket.off("ControlBodys", handleUpdateControlBodys);
       socket.off("bodycamActualizada", handleBodycamActualizada);
+      socket.off("controlBodysUpdated", handleControlBodysUpdated);
+      socket.off("getControlBody", handleGetControlBodyResponse);
+      socket.off("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
       socket.off("connect", handleSocketReconnect);
       socket.off("disconnect");
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [token, handleUpdateControlBodys, fetchInitialData, handleSocketReconnect]);
+  }, [token, handleUpdateControlBodys, fetchInitialData, handleSocketReconnect, currentPage]);
 
   // Función para abrir el modal al hacer clic en la acción de la fila
   const handleEditMissing = (row) => {
@@ -198,12 +235,12 @@ const ControlBody = ({ moduleName }) => {
       ...updatedData,
     };
 
+    // Emitir el evento sin callback
     socket.emit("ActualizarControlBodys", payload);
 
     setModalOpen(false);
     setSelectedRow(null);
   };
-
 
   return (
     <div className='h-full flex flex-col w-full bg-gray-100 p-4'>
@@ -245,7 +282,7 @@ const ControlBody = ({ moduleName }) => {
                   }
                 />
               </FormControl>
-              {canCreate && <AddBodycam />}
+              {canCreate && <AddBodycam currentPage={currentPage} />}
             </div>
           </div>
           <div className='relative h-full'>
@@ -254,17 +291,11 @@ const ControlBody = ({ moduleName }) => {
                 <div className='animate-pulse text-green-700 font-semibold'>Cargando...</div>
               </div>
             )}
-            {/* 
-              Asumamos que en el componente CRUDTable puedes definir acciones personalizadas.
-              Por ejemplo, se puede agregar una columna de “Acciones” que incluya un botón para 
-              editar los campos faltantes. Cuando se hace clic, se llama a handleEditMissing con la fila.
-              Si CRUDTable no soporta esto de forma nativa, tendrás que modificarlo para incluir esa columna.
-            */}
             <CRUDTable
               data={data}
               loading={loading}
               count={count}
-              onEdit={handleEditMissing} // Función que se invoca al hacer clic en el botón de la fila
+              onEdit={handleEditMissing}
             />
           </div>
         </div>
@@ -276,8 +307,8 @@ const ControlBody = ({ moduleName }) => {
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={handleCloseSnackbar} severity="error" sx={{ width: '100%' }}>
-          {error}
+        <Alert onClose={handleCloseSnackbar} severity={error ? "error" : "success"} sx={{ width: '100%' }}>
+          {error || "Operación completada con éxito"}
         </Alert>
       </Snackbar>
 

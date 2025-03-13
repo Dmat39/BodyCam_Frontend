@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import CustomModal from "../../Components/Modal/CustomModal";
 import {
   Button,
@@ -29,7 +29,7 @@ const TURNOS = ["MAÑANA", "TARDE", "NOCHE"];
 const JURISDICCIONES = [
   "Zona norte",
   "Zona sur",
-  "Zona centro", 
+  "Zona centro",
   "Zona alta",
   "Zona baja",
   "Zona libre",
@@ -70,6 +70,41 @@ async function fetchEmpleadoData(dni) {
 
 const AgregarControlBodycam = () => {
   const [open, setOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Escuchar la respuesta del evento ControlBodys
+    const handleControlBodysResponse = (response) => {
+      if (response.status === 200) {
+        // Mostrar la confirmación después de cerrar el modal
+        setTimeout(() => {
+          CustomSwal.fire(
+            "Registrado",
+            "El control de bodycam ha sido registrado correctamente.",
+            "success"
+          );
+          // Limpiar el formulario
+          formik.resetForm();
+          // Actualizar la lista
+          socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
+          setIsSubmitting(false);
+        }, 100);
+      } else {
+        // Si hay error, reabrir el modal para que el usuario corrija
+        setIsSubmitting(false);
+        setOpen(true);
+        swalError(response.message || "Error desconocido");
+      }
+    };
+
+    socket.on("ControlBodys", handleControlBodysResponse);
+
+    // Cleanup function
+    return () => {
+      socket.off("ControlBodys", handleControlBodysResponse);
+    };
+  }, [currentPage]);
 
   const handleClose = () => {
     formik.resetForm();
@@ -127,19 +162,11 @@ const AgregarControlBodycam = () => {
         hora_entrega: horaEntrega,
       };
 
-      socket.emit("createControlBody", datosEnvio, (response) => {
-        if (response.status === 200) {
-          CustomSwal.fire(
-            "Registrado",
-            "El control de bodycam ha sido registrado correctamente.",
-            "success"
-          );
-          socket.emit("getAllControlBodys", { page: 1, limit: 20 });
-          handleClose();
-        } else {
-          swalError(response.message || "Error desconocido");
-        }
-      });
+      setIsSubmitting(true);
+      setOpen(false);
+      
+      // Emitir evento sin callback
+      socket.emit("createControlBody", datosEnvio);
     },
   });
 
@@ -147,7 +174,7 @@ const AgregarControlBodycam = () => {
   const handleDniBlur = async (e) => {
     formik.handleBlur(e);
     const dniIngresado = e.target.value.trim();
-  
+
     if (/^\d+$/.test(dniIngresado)) {
       const data = await fetchEmpleadoData(dniIngresado);
       if (data) {
@@ -160,7 +187,7 @@ const AgregarControlBodycam = () => {
       }
     }
   };
-  
+
 
   return (
     <>
@@ -189,10 +216,9 @@ const AgregarControlBodycam = () => {
               <TextField
                 label="DNI"
                 name="dni"
-                // Además de usar formik.getFieldProps, añadimos onBlur para la búsqueda
                 value={formik.values.dni}
                 onChange={formik.handleChange}
-                onBlur={handleDniBlur} // <-- aquí está la clave
+                onBlur={handleDniBlur}
                 fullWidth
                 error={Boolean(formik.errors.dni && formik.touched.dni)}
                 helperText={formik.touched.dni && formik.errors.dni}
@@ -215,8 +241,8 @@ const AgregarControlBodycam = () => {
               />
 
               {/* Select para Turno */}
-              <FormControl 
-                fullWidth 
+              <FormControl
+                fullWidth
                 error={Boolean(formik.errors.turno && formik.touched.turno)}
               >
                 <InputLabel id="turno-label">Turno</InputLabel>
@@ -240,8 +266,8 @@ const AgregarControlBodycam = () => {
               </FormControl>
 
               {/* Select para Jurisdicción */}
-              <FormControl 
-                fullWidth 
+              <FormControl
+                fullWidth
                 error={Boolean(formik.errors.jurisdiccion && formik.touched.jurisdiccion)}
               >
                 <InputLabel id="jurisdiccion-label">Jurisdicción</InputLabel>
@@ -305,11 +331,17 @@ const AgregarControlBodycam = () => {
                 variant="outlined"
                 color="error"
                 onClick={handleClose}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit" variant="contained" color="success">
-                Registrar
+              <Button
+                type="submit"
+                variant="contained"
+                color="success"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Registrando..." : "Registrar"}
               </Button>
             </Box>
           </form>
