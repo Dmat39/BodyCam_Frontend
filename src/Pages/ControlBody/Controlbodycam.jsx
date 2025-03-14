@@ -46,7 +46,7 @@ const ControlBody = ({ moduleName }) => {
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 20;
     setCurrentPage(page); // Actualiza el estado con la página de la URL
-    
+
     // Actualizar la URL si cambia la página
     if (page !== currentPage) {
       addParams({ page });
@@ -57,7 +57,7 @@ const ControlBody = ({ moduleName }) => {
   const handlePageChange = (event, newPage) => {
     setCurrentPage(newPage);
     addParams({ page: newPage });
-    
+
     if (socketReady) {
       socket.emit("getAllControlBodys", { page: newPage, limit: 20 });
     }
@@ -117,13 +117,13 @@ const ControlBody = ({ moduleName }) => {
     timeoutRef.current = setTimeout(() => {
       addParams({ search: value.trim(), page: 1 }); // Resetear a página 1 al buscar
       setCurrentPage(1); // Reset current page state too
-      
+
       // Implementar búsqueda en el servidor si es soportado
       if (socketReady) {
-        socket.emit("getAllControlBodys", { 
-          page: 1, 
+        socket.emit("getAllControlBodys", {
+          page: 1,
           limit: 20,
-          search: value.trim() 
+          search: value.trim()
         });
       }
     }, 800);
@@ -276,18 +276,45 @@ const ControlBody = ({ moduleName }) => {
   };
 
   // Función que se ejecuta al guardar desde el modal
+  // Función que se ejecuta al guardar desde el modal
   const handleModalSave = (updatedData) => {
-    // updatedData incluye fecha_devolucion, hora_devolucion, detalles, status
+    // Asegurarse de que tenemos el número de bodycam
+    if (!selectedRow || !selectedRow.bodyCams) {
+      setError("No se pudo identificar la bodycam a actualizar");
+      setOpenSnackbar(true);
+      setModalOpen(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Crear el payload con los datos correctos para el backend
+    // Importante: usar "numero" aquí porque el backend usa getBodyCamByName(numero)
     const payload = {
-      numero: selectedRow.bodyCams, // Ajusta si tu backend usa 'numero' para buscar
-      ...updatedData,
+      numero: selectedRow.bodyCams,
+      fecha_devolucion: updatedData.fecha_devolucion,
+      hora_devolucion: updatedData.hora_devolucion,
+      detalles: updatedData.detalles,
+      status: updatedData.status
     };
 
-    // Emitir el evento sin callback
-    socket.emit("ActualizarControlBodys", payload);
+    // Emitir el evento para actualizar con callback
+    socket.emit("ActualizarControlBodys", payload, (response) => {
+      setLoading(false);
 
-    setModalOpen(false);
-    setSelectedRow(null);
+      if (response && response.status === 200) {
+        setError(null);
+        setOpenSnackbar(true);
+        // No es necesario llamar a handleRefresh aquí si el servidor
+        // emite correctamente los eventos de actualización
+      } else {
+        setError(response?.message || "Error al actualizar el control de bodycam");
+        setOpenSnackbar(true);
+      }
+
+      setModalOpen(false);
+      setSelectedRow(null);
+    });
   };
 
   return (

@@ -1,51 +1,102 @@
-// MissingFieldsModal.jsx
-import React, { useState } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  Button, 
+  TextField, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem,
+  CircularProgress 
+} from '@mui/material';
 
-const MissingFieldsModal = ({ open, onClose, rowData, onSave }) => {
-  const [fecha_devolucion, setFechaDevolucion] = useState(rowData.fecha_devolucion || '');
-  const [hora_devolucion, setHoraDevolucion] = useState(rowData.hora_devolucion || '');
-  const [detalles, setDetalles] = useState(rowData.detalles || '');
-  const [status, setStatus] = useState(rowData.status || 'EN CAMPO'); 
-  // ^ Valor por defecto (ajusta a tu gusto)
+const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
+  const [fecha_devolucion, setFechaDevolucion] = useState('');
+  const [hora_devolucion, setHoraDevolucion] = useState('');
+  const [detalles, setDetalles] = useState('');
+  const [status, setStatus] = useState('EN CAMPO');
+  const [formModified, setFormModified] = useState(false);
+  
+  // Actualizar estados cuando rowData cambia o cuando se abre el modal
+  useEffect(() => {
+    if (rowData && open) {
+      setFechaDevolucion(rowData.fecha_devolucion || '');
+      setHoraDevolucion(rowData.hora_devolucion || '');
+      setDetalles(rowData.detalles || '');
+      setStatus(rowData.status || 'EN CAMPO');
+      setFormModified(false);
+    }
+  }, [rowData, open]);
+
+  const handleInputChange = (setter) => (e) => {
+    setter(e.target.value);
+    setFormModified(true);
+  };
 
   const handleSave = () => {
     // Retornar todos los campos, incluido status
-    onSave({ fecha_devolucion, hora_devolucion, detalles, status });
+    onSave({
+      numero: rowData.bodyCams, // Usar el número de bodycam para identificación
+      fecha_devolucion,
+      hora_devolucion,
+      detalles,
+      status
+    });
+  };
+
+  const handleClose = () => {
+    if (formModified) {
+      if (window.confirm('¿Estás seguro de cerrar sin guardar los cambios?')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Actualizar Bodycam</DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        Actualizar Bodycam {rowData?.bodyCams}
+      </DialogTitle>
       <DialogContent>
         <TextField
           label="Fecha de Devolución"
           type="date"
           value={fecha_devolucion}
-          onChange={(e) => setFechaDevolucion(e.target.value)}
+          onChange={handleInputChange(setFechaDevolucion)}
           fullWidth
           margin="dense"
+          InputLabelProps={{ shrink: true }}
         />
         <TextField
           label="Hora de Devolución"
           type="time"
           value={hora_devolucion}
-          onChange={(e) => setHoraDevolucion(e.target.value)}
+          onChange={handleInputChange(setHoraDevolucion)}
           fullWidth
           margin="dense"
+          InputLabelProps={{ shrink: true }}
         />
         <TextField
           label="Detalles"
           value={detalles}
-          onChange={(e) => setDetalles(e.target.value)}
+          onChange={handleInputChange(setDetalles)}
           fullWidth
           margin="dense"
+          multiline
+          rows={3}
         />
         <FormControl fullWidth margin="dense">
-          <InputLabel>Status</InputLabel>
+          <InputLabel id="status-label">Status</InputLabel>
           <Select
+            labelId="status-label"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            label="Status"
+            onChange={handleInputChange(setStatus)}
           >
             <MenuItem value="EN CAMPO">EN CAMPO</MenuItem>
             <MenuItem value="EN CECOM">EN CECOM</MenuItem>
@@ -53,9 +104,14 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave }) => {
         </FormControl>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleSave} variant="contained" color="primary">
-          Guardar
+        <Button onClick={handleClose} disabled={loading}>Cancelar</Button>
+        <Button 
+          onClick={handleSave} 
+          variant="contained" 
+          color="primary"
+          disabled={loading}
+        >
+          {loading ? <CircularProgress size={24} /> : 'Guardar'}
         </Button>
       </DialogActions>
     </Dialog>
