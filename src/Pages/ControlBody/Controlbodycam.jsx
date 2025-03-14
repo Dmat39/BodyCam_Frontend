@@ -33,7 +33,7 @@ const ControlBody = ({ moduleName }) => {
   const [error, setError] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const timeoutRef = useRef(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(parseInt(getParams('page')) || 1);
   // Estado para controlar la disponibilidad del socket
   const [socketReady, setSocketReady] = useState(false);
 
@@ -46,7 +46,22 @@ const ControlBody = ({ moduleName }) => {
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 20;
     setCurrentPage(page); // Actualiza el estado con la página de la URL
-  }, [location.search, getParams]);
+    
+    // Actualizar la URL si cambia la página
+    if (page !== currentPage) {
+      addParams({ page });
+    }
+  }, [getParams, addParams]);
+
+  // Función para cambiar de página desde el componente de tabla
+  const handlePageChange = (event, newPage) => {
+    setCurrentPage(newPage);
+    addParams({ page: newPage });
+    
+    if (socketReady) {
+      socket.emit("getAllControlBodys", { page: newPage, limit: 20 });
+    }
+  };
 
   // Función para transformar la respuesta del servidor y actualizar el estado
   const handleUpdateControlBodys = useCallback((response) => {
@@ -100,8 +115,17 @@ const ControlBody = ({ moduleName }) => {
     }
 
     timeoutRef.current = setTimeout(() => {
-      addParams({ search: value.trim() });
-      // Aquí podrías implementar la búsqueda en el servidor si el backend lo soporta
+      addParams({ search: value.trim(), page: 1 }); // Resetear a página 1 al buscar
+      setCurrentPage(1); // Reset current page state too
+      
+      // Implementar búsqueda en el servidor si es soportado
+      if (socketReady) {
+        socket.emit("getAllControlBodys", { 
+          page: 1, 
+          limit: 20,
+          search: value.trim() 
+        });
+      }
     }, 800);
   };
 
@@ -322,6 +346,8 @@ const ControlBody = ({ moduleName }) => {
             loading={loading}
             count={count}
             onEdit={handleEditMissing}
+            currentPage={currentPage}
+            onPageChange={handlePageChange}
           />
         </div>
       </div>
@@ -350,4 +376,4 @@ const ControlBody = ({ moduleName }) => {
   );
 };
 
-export default ControlBody
+export default ControlBody;

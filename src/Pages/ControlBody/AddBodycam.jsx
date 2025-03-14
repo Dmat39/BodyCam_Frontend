@@ -67,10 +67,8 @@ async function fetchEmpleadoData(dni) {
   }
 }
 
-
-const AgregarControlBodycam = () => {
+const AgregarControlBodycam = ({ currentPage = 1 }) => {
   const [open, setOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -86,7 +84,7 @@ const AgregarControlBodycam = () => {
           );
           // Limpiar el formulario
           formik.resetForm();
-          // Actualizar la lista
+          // Actualizar la lista usando la página actual
           socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
           setIsSubmitting(false);
         }, 100);
@@ -187,7 +185,6 @@ const AgregarControlBodycam = () => {
       }
     }
   };
-
 
   return (
     <>
