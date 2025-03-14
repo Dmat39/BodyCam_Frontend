@@ -164,7 +164,7 @@ const AgregarControlBodycam = () => {
 
       setIsSubmitting(true);
       setOpen(false);
-      
+
       // Emitir evento sin callback
       socket.emit("createControlBody", datosEnvio);
     },
@@ -313,7 +313,9 @@ const AgregarControlBodycam = () => {
                   onChange={(newValue) =>
                     formik.setFieldValue("fecha_entrega", newValue)
                   }
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{
+                    textField: (params) => <TextField {...params} fullWidth />
+                  }}
                 />
                 <TimePicker
                   label="Hora de Entrega"
@@ -321,7 +323,9 @@ const AgregarControlBodycam = () => {
                   onChange={(newValue) =>
                     formik.setFieldValue("hora_entrega", newValue)
                   }
-                  renderInput={(params) => <TextField {...params} fullWidth />}
+                  slots={{
+                    textField: (params) => <TextField {...params} fullWidth />
+                  }}
                 />
               </LocalizationProvider>
             </Box>

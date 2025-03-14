@@ -280,13 +280,15 @@ const BaseDatos = ({ moduleName }) => {
             </div>
             <div className='w-full flex items-center justify-end gap-3'>
               <Tooltip title="Refrescar" placement='top' arrow>
-                <IconButton
-                  aria-label="refresh"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                >
-                  <RefreshRoundedIcon className={loading ? 'animate-spin' : ''} />
-                </IconButton>
+                <span>
+                  <IconButton
+                    aria-label="refresh"
+                    onClick={handleRefresh}
+                    disabled={loading}
+                  >
+                    <RefreshRoundedIcon className={loading ? 'animate-spin' : ''} />
+                  </IconButton>
+                </span>
               </Tooltip>
               <FormControl variant="standard" size='small' className='w-full max-w-full md:max-w-sm'>
                 <InputLabel htmlFor="input-with-icon-adornment">Buscar</InputLabel>

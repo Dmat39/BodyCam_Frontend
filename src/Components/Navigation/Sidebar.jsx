@@ -37,7 +37,7 @@ const Sidebar = ({ toggled, setToggled }) => {
   ];
 
   return (
-    <div className='relative h-full w-max bg-slate-500 z-[1200]'>
+    <div className='relative h-screen w-max bg-slate-500 z-[1200]'>
       <ProSidebar
         backgroundColor='#ffffff'
         className='shadow h-full'
