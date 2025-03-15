@@ -74,17 +74,17 @@ const ControlBody = ({ moduleName }) => {
       const transformedRows = rows.map(row => ({
         id: row.id,
         bodyCams: row.bodyCams?.numero || row.id_Body || '',
-        Personas: row.Personas ? `${row.Personas.nombres} ${row.Personas.apellidos}` : '',
-        fecha_entrega: row.fecha_entrega || '',
-        hora_entrega: row.hora_entrega || '',
+        Responsable: row.Personas ? `${row.Personas.nombres} ${row.Personas.apellidos}` : '',
+        "fecha de entrega": row.fecha_entrega || '',
+        "hora de entrega": row.hora_entrega || '',
         turno: row.horarios?.turno || row.id_turno || '',
-        Jurisdiccions: row.Jurisdiccions?.jurisdiccion || '',
-        Unidads: row.Unidads?.numero || '',
-        funcions: row.funcions?.funcion || '',
-        fecha_devolucion: row.fecha_devolucion || '',
-        hora_devolucion: row.hora_devolucion || '',
+        Jurisdiccion: row.Jurisdiccions?.jurisdiccion || '',
+        Unidad: row.Unidads?.numero || '',
+        funcion: row.funcions?.funcion || '',
+        "fecha de devolucion": row.fecha_devolucion || '',
+        "hora de devolucion": row.hora_devolucion || '',
         detalles: row.detalles || '',
-        status: row.status || '',
+        Estado: row.status || '',
       }));
 
       setData(transformedRows);
@@ -244,12 +244,19 @@ const ControlBody = ({ moduleName }) => {
         }
       };
 
+      const handleNewControlBodyAdded = (response) => {
+        if (response && response.data) {
+          handleRefresh(); // Actualiza la tabla silenciosamente sin mostrar mensajes
+        }
+      };
+
       // Registro de manejadores de eventos para datos
       socket.on("getAllControlBodysResponse", handleResponse);
       socket.on("ControlBodys", handleUpdateControlBodys);
       socket.on("bodycamActualizada", handleBodycamActualizada);
       socket.on("controlBodysUpdated", handleControlBodysUpdated);
       socket.on("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
+      socket.on("newControlBodyAdded", handleNewControlBodyAdded);
 
       // Limpieza
       return () => {
@@ -258,6 +265,7 @@ const ControlBody = ({ moduleName }) => {
         socket.off("bodycamActualizada", handleBodycamActualizada);
         socket.off("controlBodysUpdated", handleControlBodysUpdated);
         socket.off("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
+        socket.off("newControlBodyAdded", handleNewControlBodyAdded); // NUEVO: Quitar listener al desmontar
       };
     }
   }, [socketReady, currentPage, handleUpdateControlBodys, fetchInitialData, handleRefresh]);
