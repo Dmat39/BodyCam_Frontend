@@ -5,6 +5,7 @@ import CRUDTable from '../../Components/Table/CRUDTable';
 import { socket, authenticateSocket } from '../../Components/Socket/socket';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import {
   FormControl,
   InputAdornment,
@@ -28,6 +29,7 @@ const ControlBody = ({ moduleName }) => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [searchTerm, setSearchTerm] = useState(getParams('search') || '');
+  const [isSearching, setIsSearching] = useState(false);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -102,8 +104,12 @@ const ControlBody = ({ moduleName }) => {
   const fetchInitialData = useCallback(() => {
     setLoading(true);
     setError(null);
-    socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
-  }, [currentPage]);
+    socket.emit("getAllControlBodys", {
+      page: currentPage,
+      limit: 20,
+      search: searchTerm.trim()
+    });
+  }, [currentPage, searchTerm]);
 
   // Manejo del cambio en el input de búsqueda
   const handleSearchChange = (event) => {
@@ -114,19 +120,43 @@ const ControlBody = ({ moduleName }) => {
       clearTimeout(timeoutRef.current);
     }
 
-    timeoutRef.current = setTimeout(() => {
-      addParams({ search: value.trim(), page: 1 }); // Resetear a página 1 al buscar
-      setCurrentPage(1); // Reset current page state too
+    // Solo indica que está buscando, pero no bloquea la interfaz
+    setIsSearching(value.trim() !== '');
 
-      // Implementar búsqueda en el servidor si es soportado
+    // Usa debounce para retrasar la solicitud de búsqueda real
+    timeoutRef.current = setTimeout(() => {
+      // Actualiza los parámetros de URL y reinicia la página
+      addParams({ search: value.trim(), page: 1 });
+      setCurrentPage(1);
+
+      // Solo activa la solicitud del socket si está conectado
       if (socketReady) {
+        setLoading(true);
         socket.emit("getAllControlBodys", {
           page: 1,
           limit: 20,
           search: value.trim()
         });
+      } else {
+        setError("No hay conexión con el servidor");
+        setOpenSnackbar(true);
+        setIsSearching(false);
       }
-    }, 800);
+    }, 300); // Tiempo reducido para una sensación más receptiva
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    addParams({ search: '', page: 1 });
+    setCurrentPage(1);
+    if (socketReady) {
+      setLoading(true);
+      socket.emit("getAllControlBodys", {
+        page: 1,
+        limit: 20,
+        search: ''
+      });
+    }
   };
 
   // Handler para refrescar la información
@@ -268,7 +298,7 @@ const ControlBody = ({ moduleName }) => {
         socket.off("newControlBodyAdded", handleNewControlBodyAdded); // NUEVO: Quitar listener al desmontar
       };
     }
-  }, [socketReady, currentPage, handleUpdateControlBodys, fetchInitialData, handleRefresh]);
+  }, [socketReady, currentPage, searchTerm, handleUpdateControlBodys, fetchInitialData, handleRefresh]);
 
   // Limpieza adicional
   useEffect(() => {
@@ -357,21 +387,54 @@ const ControlBody = ({ moduleName }) => {
               </span>
             </Tooltip>
             <FormControl variant="standard" size='small' className='w-full max-w-full md:max-w-sm'>
-              <InputLabel htmlFor="input-with-icon-adornment">Buscar</InputLabel>
+              <InputLabel htmlFor="input-with-icon-adornment">Buscar bodycam</InputLabel>
               <Input
                 id="input-with-icon-adornment"
                 value={searchTerm}
                 onChange={handleSearchChange}
-                disabled={loading}
+                // Elimina la propiedad disabled para asegurar que la entrada esté siempre disponible
+                // disabled={loading}
                 startAdornment={
                   <InputAdornment position="start">
                     <SearchIcon />
                   </InputAdornment>
                 }
+                endAdornment={
+                  searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="clear search"
+                        onClick={handleClearSearch}
+                        edge="end"
+                        size="small"
+                      >
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }
+                placeholder="Buscar bodycam"
               />
             </FormControl>
+            {searchTerm && (
+              <div className='flex items-center justify-start px-2 py-1 bg-blue-50 rounded-md text-sm text-blue-700 flex-shrink-0'>
+                <span className='font-medium'>Búsqueda activa:</span>
+                <span className='ml-1'>{searchTerm}</span>
+                <Tooltip title="Limpiar búsqueda" placement='top' arrow>
+                  <IconButton
+                    size="small"
+                    onClick={handleClearSearch}
+                    aria-label="clear search"
+                    className='ml-1'
+                  >
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </div>
+            )}
             {canCreate && <AddBodycam currentPage={currentPage} />}
           </div>
+
         </div>
 
         {/* Table container that gets scrollbar - takes remaining height */}

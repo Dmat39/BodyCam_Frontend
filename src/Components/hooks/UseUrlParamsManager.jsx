@@ -4,8 +4,11 @@ const UseUrlParamsManager = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const getParams = () => {
+    const getParams = (key) => {
         const url = new URLSearchParams(location.search);
+        if (key) {
+            return url.get(key) || '';
+        }
         const params = {};
         url.forEach((value, key) => {
             params[key] = value;
@@ -25,7 +28,7 @@ const UseUrlParamsManager = () => {
         const url = new URLSearchParams();
         navigate({ search: url.toString() });
     }
-    
+
     //eliminar solo uno
     const removeParam = (param) => {
         const url = new URLSearchParams(location.search);
