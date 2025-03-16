@@ -13,8 +13,6 @@ import {
   InputLabel,
   FormHelperText,
 } from "@mui/material";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { LocalizationProvider, DatePicker, TimePicker } from "@mui/x-date-pickers";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 import AddIcon from "@mui/icons-material/Add";
@@ -85,7 +83,12 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
           // Limpiar el formulario
           formik.resetForm();
           // Actualizar la lista usando la página actual
-          socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
+          socket.emit("getAllControlBodys", {
+            page: currentPage,
+            limit: 20,
+            ordenarPor: "createdAt", // Ordenar por fecha y hora en lugar de ID
+            orden: "DESC" // Orden descendente para que el más reciente aparezca primero
+          });
           setIsSubmitting(false);
         }, 100);
       } else {
@@ -119,8 +122,6 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
       jurisdiccion: "",
       funcion: "",
       unidad: "",
-      fecha_entrega: dayjs(),
-      hora_entrega: dayjs(),
     },
     validate: (values) => {
       const errors = {};
@@ -145,8 +146,10 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
       return errors;
     },
     onSubmit: (values) => {
-      const fechaEntrega = values.fecha_entrega.format("YYYY-MM-DD");
-      const horaEntrega = values.hora_entrega.format("HH:mm:ss");
+      // Obtener fecha y hora actual exacta
+      const currentDateTime = dayjs();
+      const fechaEntrega = currentDateTime.format("YYYY-MM-DD");
+      const horaEntrega = currentDateTime.format("HH:mm:ss");
 
       const numerosBodycamArray = values.numerosBodycam
         .split(",")
@@ -158,6 +161,7 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
         numeros: numerosBodycamArray,
         fecha_entrega: fechaEntrega,
         hora_entrega: horaEntrega,
+        status: "EN CAMPO",
       };
 
       setIsSubmitting(true);
@@ -303,28 +307,7 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
                 error={Boolean(formik.errors.unidad && formik.touched.unidad)}
                 helperText={formik.touched.unidad && formik.errors.unidad}
               />
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Fecha de Entrega"
-                  value={formik.values.fecha_entrega}
-                  onChange={(newValue) =>
-                    formik.setFieldValue("fecha_entrega", newValue)
-                  }
-                  slots={{
-                    textField: (params) => <TextField {...params} fullWidth />
-                  }}
-                />
-                <TimePicker
-                  label="Hora de Entrega"
-                  value={formik.values.hora_entrega}
-                  onChange={(newValue) =>
-                    formik.setFieldValue("hora_entrega", newValue)
-                  }
-                  slots={{
-                    textField: (params) => <TextField {...params} fullWidth />
-                  }}
-                />
-              </LocalizationProvider>
+              {/* Eliminados los campos de fecha y hora ya que ahora son automáticos */}
             </Box>
             <Box className="flex justify-between pt-5">
               <Button

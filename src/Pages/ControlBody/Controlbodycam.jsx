@@ -316,9 +316,9 @@ const ControlBody = ({ moduleName }) => {
   // Función que se ejecuta al guardar desde el modal
   // Función que se ejecuta al guardar desde el modal
   const handleModalSave = (updatedData) => {
-    // Asegurarse de que tenemos el número de bodycam
-    if (!selectedRow || !selectedRow.bodyCams) {
-      setError("No se pudo identificar la bodycam a actualizar");
+    // Asegurarse de que tenemos el ID del control body
+    if (!selectedRow || !selectedRow.id) {
+      setError("No se pudo identificar el registro de control a actualizar");
       setOpenSnackbar(true);
       setModalOpen(false);
       return;
@@ -327,9 +327,9 @@ const ControlBody = ({ moduleName }) => {
     setLoading(true);
 
     // Crear el payload con los datos correctos para el backend
-    // Importante: usar "numero" aquí porque el backend usa getBodyCamByName(numero)
+    // Importante: usar "id" en lugar de "numero" para identificar el registro
     const payload = {
-      numero: selectedRow.bodyCams,
+      id: selectedRow.id, // Cambiado de numero a id
       fecha_devolucion: updatedData.fecha_devolucion,
       hora_devolucion: updatedData.hora_devolucion,
       detalles: updatedData.detalles,
@@ -343,7 +343,7 @@ const ControlBody = ({ moduleName }) => {
       if (response && response.status === 200) {
         setError(null);
         setOpenSnackbar(true);
-        
+
       } else {
         setError(response?.message || "Error al actualizar el control de bodycam");
         setOpenSnackbar(true);
@@ -415,7 +415,7 @@ const ControlBody = ({ moduleName }) => {
                 placeholder="Buscar bodycam"
               />
             </FormControl>
-            
+
             {searchTerm && (
               <div className='flex items-center justify-start px-2 py-1 bg-blue-50 rounded-md text-sm text-blue-700 flex-shrink-0'>
                 <span className='font-medium'>Búsqueda activa:</span>

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  Button, 
-  TextField, 
-  FormControl, 
-  InputLabel, 
-  Select, 
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
   MenuItem,
-  CircularProgress 
+  CircularProgress
 } from '@mui/material';
 
 const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
@@ -19,7 +19,7 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
   const [detalles, setDetalles] = useState('');
   const [status, setStatus] = useState('EN CAMPO');
   const [formModified, setFormModified] = useState(false);
-  
+
   // Actualizar estados cuando rowData cambia o cuando se abre el modal
   useEffect(() => {
     if (rowData && open) {
@@ -37,9 +37,9 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
   };
 
   const handleSave = () => {
-    // Retornar todos los campos, incluido status
+    // Retornar todos los campos, incluido el ID del control body
     onSave({
-      numero: rowData.bodyCams, // Usar el número de bodycam para identificación
+      id: rowData.id, // Usar el ID del registro de control directamente
       fecha_devolucion,
       hora_devolucion,
       detalles,
@@ -60,7 +60,7 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>
-        Actualizar Bodycam {rowData?.bodyCams}
+        Actualizar Bodycam {rowData?.bodyCams} (ID: {rowData?.id})
       </DialogTitle>
       <DialogContent>
         <TextField
@@ -105,9 +105,9 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>Cancelar</Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained" 
+        <Button
+          onClick={handleSave}
+          variant="contained"
           color="primary"
           disabled={loading}
         >
