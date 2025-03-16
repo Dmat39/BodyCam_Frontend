@@ -343,8 +343,7 @@ const ControlBody = ({ moduleName }) => {
       if (response && response.status === 200) {
         setError(null);
         setOpenSnackbar(true);
-        // No es necesario llamar a handleRefresh aquí si el servidor
-        // emite correctamente los eventos de actualización
+        
       } else {
         setError(response?.message || "Error al actualizar el control de bodycam");
         setOpenSnackbar(true);
@@ -416,6 +415,7 @@ const ControlBody = ({ moduleName }) => {
                 placeholder="Buscar bodycam"
               />
             </FormControl>
+            
             {searchTerm && (
               <div className='flex items-center justify-start px-2 py-1 bg-blue-50 rounded-md text-sm text-blue-700 flex-shrink-0'>
                 <span className='font-medium'>Búsqueda activa:</span>
