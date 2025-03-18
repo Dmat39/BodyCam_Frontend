@@ -10,22 +10,20 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  Typography,
+  Box
 } from '@mui/material';
 
-const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
-  const [fecha_devolucion, setFechaDevolucion] = useState('');
-  const [hora_devolucion, setHoraDevolucion] = useState('');
+const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
   const [detalles, setDetalles] = useState('');
   const [status, setStatus] = useState('EN CAMPO');
   const [formModified, setFormModified] = useState(false);
 
-  // Actualizar estados cuando rowData cambia o cuando se abre el modal
+  // Update states when rowData changes or when modal opens
   useEffect(() => {
     if (rowData && open) {
-      setFechaDevolucion(rowData.fecha_devolucion || '');
-      setHoraDevolucion(rowData.hora_devolucion || '');
-      setDetalles(rowData.detalles || '');
+      setDetalles(rowData.detalles || 'NINGUNO');
       setStatus(rowData.status || 'EN CAMPO');
       setFormModified(false);
     }
@@ -37,11 +35,18 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
   };
 
   const handleSave = () => {
-    // Retornar todos los campos, incluido el ID del control body
+    // Get current date and time for the update
+    const now = new Date();
+    const formattedDate = now.toISOString().split('T')[0];
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const formattedTime = `${hours}:${minutes}`;
+
+    // Return all fields, including the ID and current date/time
     onSave({
-      id: rowData.id, // Usar el ID del registro de control directamente
-      fecha_devolucion,
-      hora_devolucion,
+      id: rowData.id,
+      fecha_devolucion: formattedDate,
+      hora_devolucion: formattedTime,
       detalles,
       status
     });
@@ -59,28 +64,21 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        Actualizar Bodycam {rowData?.bodyCams} (ID: {rowData?.id})
+      <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: 2 }}>
+        <Typography variant="h6" component="div">
+          Actualizar Bodycam
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary">
+          {rowData?.bodyCams}
+        </Typography>
       </DialogTitle>
-      <DialogContent>
-        <TextField
-          label="Fecha de Devolución"
-          type="date"
-          value={fecha_devolucion}
-          onChange={handleInputChange(setFechaDevolucion)}
-          fullWidth
-          margin="dense"
-          InputLabelProps={{ shrink: true }}
-        />
-        <TextField
-          label="Hora de Devolución"
-          type="time"
-          value={hora_devolucion}
-          onChange={handleInputChange(setHoraDevolucion)}
-          fullWidth
-          margin="dense"
-          InputLabelProps={{ shrink: true }}
-        />
+      <DialogContent sx={{ padding: 3 }}>
+        <Box sx={{ marginBottom: 2 }}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Fecha y hora actuales se registrarán automáticamente
+          </Typography>
+        </Box>
+        
         <TextField
           label="Detalles"
           value={detalles}
@@ -89,7 +87,9 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
           margin="dense"
           multiline
           rows={3}
+          sx={{ marginBottom: 2 }}
         />
+        
         <FormControl fullWidth margin="dense">
           <InputLabel id="status-label">Status</InputLabel>
           <Select
@@ -103,19 +103,25 @@ const MissingFieldsModal = ({ open, onClose, rowData, onSave, loading }) => {
           </Select>
         </FormControl>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={loading}>Cancelar</Button>
+      <DialogActions sx={{ padding: 2, borderTop: '1px solid #e0e0e0' }}>
+        <Button 
+          onClick={handleClose} 
+          disabled={loading}
+          variant="outlined"
+        >
+          CANCELAR
+        </Button>
         <Button
           onClick={handleSave}
           variant="contained"
           color="primary"
           disabled={loading}
         >
-          {loading ? <CircularProgress size={24} /> : 'Guardar'}
+          {loading ? <CircularProgress size={24} /> : 'GUARDAR'}
         </Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-export default MissingFieldsModal;
+export default BodycamUpdateModal;
