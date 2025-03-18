@@ -25,6 +25,18 @@ const renderValue = (value) => {
     return value;
 };
 
+// Función para determinar el color de estado
+const getStatusColor = (status) => {
+    switch (status?.toUpperCase()) {
+        case 'EN CECOM':
+            return 'bg-green-100 text-green-800 font-medium';
+        case 'EN CAMPO':
+            return 'bg-orange-100 text-orange-800 font-medium';
+        default:
+            return '';
+    }
+};
+
 const CRUDTable = memo(({
     data = [],
     onDelete = null,
@@ -185,9 +197,15 @@ const CRUDTable = memo(({
                                                                             </Tooltip>
                                                                         ))
                                                                     ) : (
-                                                                        typeof value === 'object' && value !== null ?
-                                                                            JSON.stringify(value) :
-                                                                            value
+                                                                        header === 'Estado' ? (
+                                                                            <span className={`px-2 py-1 rounded-full ${getStatusColor(value)}`}>
+                                                                                {renderValue(value)}
+                                                                            </span>
+                                                                        ) : (
+                                                                            typeof value === 'object' && value !== null ?
+                                                                                JSON.stringify(value) :
+                                                                                renderValue(value)
+                                                                        )
                                                                     )}
                                                                 </TableCell>
                                                             );
