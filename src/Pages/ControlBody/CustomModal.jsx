@@ -24,7 +24,7 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
   useEffect(() => {
     if (rowData && open) {
       setDetalles(rowData.detalles || 'NINGUNO');
-      setStatus(rowData.status || 'EN CAMPO');
+      setStatus('EN CECOM'); 
       setFormModified(false);
     }
   }, [rowData, open]);
@@ -35,20 +35,18 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
   };
 
   const handleSave = () => {
-    // Get current date and time for the update
     const now = new Date();
     const formattedDate = now.toISOString().split('T')[0];
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const formattedTime = `${hours}:${minutes}`;
-
-    // Return all fields, including the ID and current date/time
+  
     onSave({
       id: rowData.id,
       fecha_devolucion: formattedDate,
       hora_devolucion: formattedTime,
       detalles,
-      status
+      status: "EN CECOM" // Forzar siempre el valor "EN CECOM"
     });
   };
 

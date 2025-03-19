@@ -355,7 +355,7 @@ const ControlBody = ({ moduleName }) => {
   };
 
   return (
-    <div className='flex flex-col w-full h-screen max-h-screen overflow-hidden'>
+    <div className='h-full flex flex-col w-full bg-gray-100 p-4'>
       {/* Header fixed at top */}
       <header className="text-white bg-green-700 py-4 px-3 mb-4 w-full rounded-lg flex justify-center relative flex-shrink-0">
         <Link onClick={() => navigate(-1)} className='flex items-center gap-1'>
