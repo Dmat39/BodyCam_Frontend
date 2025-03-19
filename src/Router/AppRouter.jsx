@@ -3,9 +3,9 @@ import PrivateRouter from './PrivateRouter';
 import PublicRouter from './PublicRouter';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom';
 import Layout from '../Pages/Layout';
-import Inicio from '../Pages/Inicio';
 import ControlBodycam from '../Pages/ControlBody/Controlbodycam';
 import BaseDatos from '../Pages/BaseDeDatos/Base_Datos';
+import Dashboard from '../Pages/Dashboard';
 
 const AppRouter = () => {
     const router = createBrowserRouter([
@@ -15,7 +15,7 @@ const AppRouter = () => {
             children: [
                 {
                     path: "/",
-                    element: <PrivateRouter element={<Inicio />} />,
+                    element: <PrivateRouter element={<Dashboard />} />,
                 },
                 {
                     path: "/control_bodycam",
