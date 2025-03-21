@@ -6,6 +6,7 @@ import { socket, authenticateSocket } from '../../Components/Socket/socket';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import {
   FormControl,
   InputAdornment,
@@ -14,7 +15,11 @@ import {
   IconButton,
   Tooltip,
   Snackbar,
-  Alert
+  Alert,
+  Menu,
+  MenuItem,
+  Chip,
+  Box
 } from '@mui/material';
 import usePermissions from '../../Components/hooks/usePermission';
 import { useSelector } from 'react-redux';
@@ -28,6 +33,7 @@ const ControlBody = ({ moduleName }) => {
   const { addParams, getParams } = UseUrlParamsManager();
   const navigate = useNavigate();
   const [data, setData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState(getParams('search') || '');
   const [isSearching, setIsSearching] = useState(false);
   const [count, setCount] = useState(0);
@@ -36,26 +42,49 @@ const ControlBody = ({ moduleName }) => {
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const timeoutRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(parseInt(getParams('page')) || 1);
-  // Estado para controlar la disponibilidad del socket
   const [socketReady, setSocketReady] = useState(false);
-
-  // Estados para el modal
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
+  
+  // Estado para el filtro de estado
+  const [statusFilter, setStatusFilter] = useState(getParams('status') || '');
+  const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+
+  // Lista de estados disponibles
+  const availableStatuses = ['EN CAMPO', 'EN CECOM', 'NINGUNO'];
 
   useEffect(() => {
     const params = getParams();
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 20;
-    setCurrentPage(page); // Actualiza el estado con la página de la URL
+    const status = params.status || '';
+    
+    setCurrentPage(page);
+    setStatusFilter(status);
 
-    // Actualizar la URL si cambia la página
     if (page !== currentPage) {
       addParams({ page });
     }
   }, [getParams, addParams]);
 
-  // Función para cambiar de página desde el componente de tabla
+  // Función para aplicar filtros a los datos
+  useEffect(() => {
+    if (data.length > 0) {
+      let filtered = [...data];
+      
+      // Aplicar filtro por estado si está activo
+      if (statusFilter) {
+        filtered = filtered.filter(item => item.Estado === statusFilter);
+      }
+      
+      setFilteredData(filtered);
+      setCount(filtered.length);
+    } else {
+      setFilteredData([]);
+    }
+  }, [data, statusFilter]);
+
   const handlePageChange = (event, newPage) => {
     setCurrentPage(newPage);
     addParams({ page: newPage });
@@ -63,6 +92,31 @@ const ControlBody = ({ moduleName }) => {
     if (socketReady) {
       socket.emit("getAllControlBodys", { page: newPage, limit: 20 });
     }
+  };
+
+  // Función para manejar el clic en el filtro de estado
+  const handleFilterClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  // Función para cerrar el menú
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  // Función para seleccionar un filtro
+  const handleFilterSelect = (status) => {
+    setStatusFilter(status);
+    addParams({ status, page: 1 });
+    setCurrentPage(1);
+    handleMenuClose();
+  };
+
+  // Función para limpiar el filtro
+  const handleClearFilter = () => {
+    setStatusFilter('');
+    addParams({ status: '', page: 1 });
+    setCurrentPage(1);
   };
 
   // Función para transformar la respuesta del servidor y actualizar el estado
@@ -100,7 +154,7 @@ const ControlBody = ({ moduleName }) => {
     setLoading(false);
   }, []);
 
-  // Emitir el evento para obtener datos iniciales
+  // Resto del código permanece igual...
   const fetchInitialData = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -111,7 +165,6 @@ const ControlBody = ({ moduleName }) => {
     });
   }, [currentPage, searchTerm]);
 
-  // Manejo del cambio en el input de búsqueda
   const handleSearchChange = (event) => {
     const value = event.target.value;
     setSearchTerm(value);
@@ -120,16 +173,12 @@ const ControlBody = ({ moduleName }) => {
       clearTimeout(timeoutRef.current);
     }
 
-    // Solo indica que está buscando, pero no bloquea la interfaz
     setIsSearching(value.trim() !== '');
 
-    // Usa debounce para retrasar la solicitud de búsqueda real
     timeoutRef.current = setTimeout(() => {
-      // Actualiza los parámetros de URL y reinicia la página
       addParams({ search: value.trim(), page: 1 });
       setCurrentPage(1);
 
-      // Solo activa la solicitud del socket si está conectado
       if (socketReady) {
         setLoading(true);
         socket.emit("getAllControlBodys", {
@@ -142,7 +191,7 @@ const ControlBody = ({ moduleName }) => {
         setOpenSnackbar(true);
         setIsSearching(false);
       }
-    }, 300); // Tiempo reducido para una sensación más receptiva
+    }, 300);
   };
 
   const handleClearSearch = () => {
@@ -159,7 +208,6 @@ const ControlBody = ({ moduleName }) => {
     }
   };
 
-  // Handler para refrescar la información
   const handleRefresh = useCallback(() => {
     if (socketReady) {
       setLoading(true);
@@ -171,15 +219,13 @@ const ControlBody = ({ moduleName }) => {
     }
   }, [currentPage, socketReady]);
 
-  // Cerrar snackbar
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') return;
     setOpenSnackbar(false);
   };
 
-  // Primer useEffect para manejar la conexión del socket
+  // El resto de useEffects y funciones se mantienen igual...
   useEffect(() => {
-    // Función para manejar la conexión exitosa
     const handleConnect = () => {
       console.log("✅ Socket conectado exitosamente");
       authenticateSocket(token);
@@ -187,7 +233,6 @@ const ControlBody = ({ moduleName }) => {
       setError(null);
     };
 
-    // Función para manejar la desconexión
     const handleDisconnect = () => {
       console.warn("⚠️ Socket desconectado");
       setSocketReady(false);
@@ -195,7 +240,6 @@ const ControlBody = ({ moduleName }) => {
       setOpenSnackbar(true);
     };
 
-    // Función para manejar errores de conexión
     const handleConnectError = (err) => {
       console.error("❌ Error de conexión del socket:", err);
       setSocketReady(false);
@@ -203,21 +247,17 @@ const ControlBody = ({ moduleName }) => {
       setOpenSnackbar(true);
     };
 
-    // Registrar los handlers de conexión
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.on("connect_error", handleConnectError);
 
-    // Asegurarse de que el socket esté conectado
     if (!socket.connected && !socket.connecting) {
       console.log("Iniciando conexión del socket...");
       socket.connect();
     } else if (socket.connected) {
-      // Si ya está conectado al montar el componente
       handleConnect();
     }
 
-    // Limpieza al desmontar
     return () => {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
@@ -225,12 +265,10 @@ const ControlBody = ({ moduleName }) => {
     };
   }, [token]);
 
-  // Segundo useEffect para cargar datos una vez que el socket esté listo
   useEffect(() => {
     if (socketReady) {
       fetchInitialData();
 
-      // Configuración de los manejadores de eventos para datos
       const handleResponse = (response) => {
         if (typeof response !== "object" || response === null) {
           console.error("❌ Respuesta inválida del servidor:", response);
@@ -276,11 +314,10 @@ const ControlBody = ({ moduleName }) => {
 
       const handleNewControlBodyAdded = (response) => {
         if (response && response.data) {
-          handleRefresh(); // Actualiza la tabla silenciosamente sin mostrar mensajes
+          handleRefresh();
         }
       };
 
-      // Registro de manejadores de eventos para datos
       socket.on("getAllControlBodysResponse", handleResponse);
       socket.on("ControlBodys", handleUpdateControlBodys);
       socket.on("bodycamActualizada", handleBodycamActualizada);
@@ -288,35 +325,29 @@ const ControlBody = ({ moduleName }) => {
       socket.on("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
       socket.on("newControlBodyAdded", handleNewControlBodyAdded);
 
-      // Limpieza
       return () => {
         socket.off("getAllControlBodysResponse", handleResponse);
         socket.off("ControlBodys", handleUpdateControlBodys);
         socket.off("bodycamActualizada", handleBodycamActualizada);
         socket.off("controlBodysUpdated", handleControlBodysUpdated);
         socket.off("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
-        socket.off("newControlBodyAdded", handleNewControlBodyAdded); // NUEVO: Quitar listener al desmontar
+        socket.off("newControlBodyAdded", handleNewControlBodyAdded);
       };
     }
   }, [socketReady, currentPage, searchTerm, handleUpdateControlBodys, fetchInitialData, handleRefresh]);
 
-  // Limpieza adicional
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  // Función para abrir el modal al hacer clic en la acción de la fila
   const handleEditMissing = (row) => {
     setSelectedRow(row);
     setModalOpen(true);
   };
 
-  // Función que se ejecuta al guardar desde el modal
-  // Función que se ejecuta al guardar desde el modal
   const handleModalSave = (updatedData) => {
-    // Asegurarse de que tenemos el ID del control body
     if (!selectedRow || !selectedRow.id) {
       setError("No se pudo identificar el registro de control a actualizar");
       setOpenSnackbar(true);
@@ -326,24 +357,20 @@ const ControlBody = ({ moduleName }) => {
 
     setLoading(true);
 
-    // Crear el payload con los datos correctos para el backend
-    // Importante: usar "id" en lugar de "numero" para identificar el registro
     const payload = {
-      id: selectedRow.id, // Cambiado de numero a id
+      id: selectedRow.id,
       fecha_devolucion: updatedData.fecha_devolucion,
       hora_devolucion: updatedData.hora_devolucion,
       detalles: updatedData.detalles,
       status: updatedData.status
     };
 
-    // Emitir el evento para actualizar con callback
     socket.emit("ActualizarControlBodys", payload, (response) => {
       setLoading(false);
 
       if (response && response.status === 200) {
         setError(null);
         setOpenSnackbar(true);
-
       } else {
         setError(response?.message || "Error al actualizar el control de bodycam");
         setOpenSnackbar(true);
@@ -356,7 +383,6 @@ const ControlBody = ({ moduleName }) => {
 
   return (
     <div className='flex flex-col w-full h-screen max-h-screen overflow-hidden'>
-      {/* Header fixed at top */}
       <header className="text-white bg-green-700 py-4 px-3 mb-4 w-full rounded-lg flex justify-center relative flex-shrink-0">
         <Link onClick={() => navigate(-1)} className='flex items-center gap-1'>
           <ArrowBackIosNewRoundedIcon className='!size-5 md:!size-6 mt-[0.1rem] absolute left-4' />
@@ -364,16 +390,59 @@ const ControlBody = ({ moduleName }) => {
         <h1 className="md:text-2xl lg:text-4xl font-bold text-center">Control de Bodycam</h1>
       </header>
 
-      {/* Main content wrapper with fixed height */}
       <div className='flex-1 flex flex-col bg-white shadow rounded-lg p-4 overflow-hidden'>
-        {/* Control bar fixed at top of content area */}
         <div className='flex flex-col md:flex-row justify-between pb-4 gap-3 flex-shrink-0'>
           <div className='flex items-center gap-2'>
             <span className='text-gray-600'>
               Total de filas: <span id="rowCount" className='font-bold'>{count || 0}</span>
             </span>
+            
+            {/* Mostrar chip de filtro activo */}
+            {statusFilter && (
+              <Chip 
+                label={`Estado: ${statusFilter}`} 
+                color="primary" 
+                variant="outlined"
+                onDelete={handleClearFilter}
+                size="small"
+                className="ml-2"
+              />
+            )}
           </div>
           <div className='flex items-center justify-end gap-3'>
+            {/* Botón de filtro por estado */}
+            <Tooltip title="Filtrar por estado" placement='top' arrow>
+              <span>
+                <IconButton
+                  aria-label="filter"
+                  onClick={handleFilterClick}
+                  color={statusFilter ? "primary" : "default"}
+                >
+                  <FilterListIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {/* Menú de filtros */}
+            <Menu
+              anchorEl={anchorEl}
+              open={openMenu}
+              onClose={handleMenuClose}
+            >
+              {availableStatuses.map((status) => (
+                <MenuItem 
+                  key={status} 
+                  onClick={() => handleFilterSelect(status)}
+                  selected={statusFilter === status}
+                >
+                  {status}
+                </MenuItem>
+              ))}
+              <MenuItem onClick={handleClearFilter}>
+                <Box sx={{ color: 'text.secondary' }}>Limpiar filtro</Box>
+              </MenuItem>
+            </Menu>
+
             <Tooltip title="Refrescar" placement='top' arrow>
               <span>
                 <IconButton
@@ -391,8 +460,6 @@ const ControlBody = ({ moduleName }) => {
                 id="input-with-icon-adornment"
                 value={searchTerm}
                 onChange={handleSearchChange}
-                // Elimina la propiedad disabled para asegurar que la entrada esté siempre disponible
-                // disabled={loading}
                 startAdornment={
                   <InputAdornment position="start">
                     <SearchIcon />
@@ -434,15 +501,13 @@ const ControlBody = ({ moduleName }) => {
             )}
             {canCreate && <AddBodycam currentPage={currentPage} />}
           </div>
-
         </div>
 
-        {/* Table container that gets scrollbar - takes remaining height */}
         <div className='flex-1 relative overflow-hidden'>
           <CRUDTable
-            data={data}
+            data={statusFilter ? filteredData : data}
             loading={loading}
-            count={count}
+            count={statusFilter ? filteredData.length : count}
             onEdit={handleEditMissing}
             currentPage={currentPage}
             onPageChange={handlePageChange}
@@ -461,7 +526,6 @@ const ControlBody = ({ moduleName }) => {
         </Alert>
       </Snackbar>
 
-      {/* Renderizar el modal cuando se haya seleccionado una fila */}
       {selectedRow && (
         <MissingFieldsModal
           open={modalOpen}
