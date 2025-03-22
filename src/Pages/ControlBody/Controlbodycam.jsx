@@ -48,6 +48,7 @@ const ControlBody = ({ moduleName }) => {
   const [socketReady, setSocketReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedRowId, setSelectedRowId] = useState(null);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState(getParams('status') || '');
@@ -119,6 +120,10 @@ const ControlBody = ({ moduleName }) => {
     addParams({ page: 1, limit: newLimit });
   };
 
+  const handleRowClick = (e, row) => {
+    setSelectedRowId(row.id === selectedRowId ? null : row.id);
+  };
+
   // Filter menu handlers
   const handleFilterClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -166,10 +171,14 @@ const ControlBody = ({ moduleName }) => {
       }));
 
       setAllData(transformedRows);
+      setDisplayData(transformedRows); // Set display data directly
       setTotalCount(count);
+      setFilteredCount(count);
     } else {
       setAllData([]);
+      setDisplayData([]);
       setTotalCount(0);
+      setFilteredCount(0);
       setError(response.message || 'Error al cargar datos');
       setOpenSnackbar(true);
     }
@@ -383,6 +392,11 @@ const ControlBody = ({ moduleName }) => {
       status: updatedData.status
     };
 
+    // Add numero_unidad to payload if provided
+    if (updatedData.numero_unidad) {
+      payload.numero_unidad = updatedData.numero_unidad;
+    }
+
     socket.emit("ActualizarControlBodys", payload, (response) => {
       setLoading(false);
 
@@ -534,6 +548,8 @@ const ControlBody = ({ moduleName }) => {
             pagination={true}
             filter={true}
             activeFilter={statusFilter}
+            rowOnClick={handleRowClick}
+            selectedRowId={selectedRowId}  // Añade esta prop
           />
         </div>
       </div>
