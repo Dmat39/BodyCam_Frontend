@@ -32,79 +32,102 @@ const ControlBody = ({ moduleName }) => {
   const { token } = useSelector((state) => state.auth);
   const { addParams, getParams } = UseUrlParamsManager();
   const navigate = useNavigate();
-  const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
+  const [allData, setAllData] = useState([]); // Store all data from server
+  const [filteredData, setFilteredData] = useState([]); // Data after filters applied
+  const [displayData, setDisplayData] = useState([]); // Data for current page
   const [searchTerm, setSearchTerm] = useState(getParams('search') || '');
   const [isSearching, setIsSearching] = useState(false);
-  const [count, setCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0); // Total count from API
+  const [filteredCount, setFilteredCount] = useState(0); // Count after filters
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const timeoutRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(parseInt(getParams('page')) || 1);
+  const [rowsPerPage, setRowsPerPage] = useState(parseInt(getParams('limit')) || 20);
   const [socketReady, setSocketReady] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
-  
-  // Estado para el filtro de estado
+
+  // Filter state
   const [statusFilter, setStatusFilter] = useState(getParams('status') || '');
   const [anchorEl, setAnchorEl] = useState(null);
   const openMenu = Boolean(anchorEl);
 
-  // Lista de estados disponibles
-  const availableStatuses = ['EN CAMPO', 'EN CECOM', 'NINGUNO'];
+  // Available statuses for filter
+  const availableStatuses = ['EN CAMPO', 'EN CECOM'];
 
+  // Update params from URL when component mounts
   useEffect(() => {
     const params = getParams();
     const page = Number(params.page) || 1;
     const limit = Number(params.limit) || 20;
     const status = params.status || '';
-    
+    const search = params.search || '';
+
     setCurrentPage(page);
+    setRowsPerPage(limit);
     setStatusFilter(status);
+    setSearchTerm(search);
+  }, [getParams]);
 
-    if (page !== currentPage) {
-      addParams({ page });
-    }
-  }, [getParams, addParams]);
-
-  // Función para aplicar filtros a los datos
+  // Apply filters to the data
   useEffect(() => {
-    if (data.length > 0) {
-      let filtered = [...data];
-      
-      // Aplicar filtro por estado si está activo
+    if (allData.length > 0) {
+      // Filter by search term and status
+      let filtered = [...allData];
+
+      // Apply search filter if present
+      if (searchTerm.trim()) {
+        const lowerSearch = searchTerm.toLowerCase().trim();
+        filtered = filtered.filter(item => {
+          // Search across all object properties
+          return Object.values(item).some(val =>
+            String(val).toLowerCase().includes(lowerSearch)
+          );
+        });
+      }
+
+      // Apply status filter if present
       if (statusFilter) {
         filtered = filtered.filter(item => item.Estado === statusFilter);
       }
-      
+
       setFilteredData(filtered);
-      setCount(filtered.length);
+      setFilteredCount(filtered.length);
+
+      // Calculate paginated data
+      const startIndex = (currentPage - 1) * rowsPerPage;
+      const endIndex = startIndex + rowsPerPage;
+      setDisplayData(filtered.slice(startIndex, endIndex));
     } else {
       setFilteredData([]);
+      setFilteredCount(0);
+      setDisplayData([]);
     }
-  }, [data, statusFilter]);
+  }, [allData, statusFilter, searchTerm, currentPage, rowsPerPage]);
 
   const handlePageChange = (event, newPage) => {
-    setCurrentPage(newPage);
-    addParams({ page: newPage });
-
-    if (socketReady) {
-      socket.emit("getAllControlBodys", { page: newPage, limit: 20 });
-    }
+    setCurrentPage(newPage + 1);
+    addParams({ page: newPage + 1 });
   };
 
-  // Función para manejar el clic en el filtro de estado
+  const handleRowsPerPageChange = (event) => {
+    const newLimit = parseInt(event.target.value);
+    setRowsPerPage(newLimit);
+    setCurrentPage(1); // Reset to first page when changing rows per page
+    addParams({ page: 1, limit: newLimit });
+  };
+
+  // Filter menu handlers
   const handleFilterClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
-  // Función para cerrar el menú
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
-  // Función para seleccionar un filtro
   const handleFilterSelect = (status) => {
     setStatusFilter(status);
     addParams({ status, page: 1 });
@@ -112,18 +135,17 @@ const ControlBody = ({ moduleName }) => {
     handleMenuClose();
   };
 
-  // Función para limpiar el filtro
   const handleClearFilter = () => {
     setStatusFilter('');
     addParams({ status: '', page: 1 });
     setCurrentPage(1);
   };
 
-  // Función para transformar la respuesta del servidor y actualizar el estado
+  // Process data from server
   const handleUpdateControlBodys = useCallback((response) => {
     if (response.status === 200 && response.data) {
       let rows = response.data.data || [];
-      let totalCount = response.data.totalCount || 0;
+      let count = response.data.totalCount || 0;
 
       rows = rows.sort((a, b) => b.id - a.id);
 
@@ -143,27 +165,27 @@ const ControlBody = ({ moduleName }) => {
         Estado: row.status || '',
       }));
 
-      setData(transformedRows);
-      setCount(totalCount);
+      setAllData(transformedRows);
+      setTotalCount(count);
     } else {
-      setData([]);
-      setCount(0);
+      setAllData([]);
+      setTotalCount(0);
       setError(response.message || 'Error al cargar datos');
       setOpenSnackbar(true);
     }
     setLoading(false);
   }, []);
 
-  // Resto del código permanece igual...
+  // Fetch data from server
   const fetchInitialData = useCallback(() => {
     setLoading(true);
     setError(null);
     socket.emit("getAllControlBodys", {
-      page: currentPage,
-      limit: 20,
+      page: 1, // Get all records for client-side pagination
+      limit: 1000, // Large limit to get all records
       search: searchTerm.trim()
     });
-  }, [currentPage, searchTerm]);
+  }, [searchTerm]);
 
   const handleSearchChange = (event) => {
     const value = event.target.value;
@@ -181,11 +203,8 @@ const ControlBody = ({ moduleName }) => {
 
       if (socketReady) {
         setLoading(true);
-        socket.emit("getAllControlBodys", {
-          page: 1,
-          limit: 20,
-          search: value.trim()
-        });
+        // For frontend filtering, we fetch all data again
+        fetchInitialData();
       } else {
         setError("No hay conexión con el servidor");
         setOpenSnackbar(true);
@@ -200,11 +219,7 @@ const ControlBody = ({ moduleName }) => {
     setCurrentPage(1);
     if (socketReady) {
       setLoading(true);
-      socket.emit("getAllControlBodys", {
-        page: 1,
-        limit: 20,
-        search: ''
-      });
+      fetchInitialData();
     }
   };
 
@@ -212,19 +227,19 @@ const ControlBody = ({ moduleName }) => {
     if (socketReady) {
       setLoading(true);
       setError(null);
-      socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
+      fetchInitialData();
     } else {
       setError("No hay conexión con el servidor. Espere a que se restablezca.");
       setOpenSnackbar(true);
     }
-  }, [currentPage, socketReady]);
+  }, [socketReady, fetchInitialData]);
 
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') return;
     setOpenSnackbar(false);
   };
 
-  // El resto de useEffects y funciones se mantienen igual...
+  // Socket connection setup
   useEffect(() => {
     const handleConnect = () => {
       console.log("✅ Socket conectado exitosamente");
@@ -265,6 +280,7 @@ const ControlBody = ({ moduleName }) => {
     };
   }, [token]);
 
+  // Socket event listeners
   useEffect(() => {
     if (socketReady) {
       fetchInitialData();
@@ -298,7 +314,7 @@ const ControlBody = ({ moduleName }) => {
       };
 
       const handleControlBodysUpdated = () => {
-        socket.emit("getAllControlBodys", { page: currentPage, limit: 20 });
+        fetchInitialData();
       };
 
       const handleActualizarControlBodysResponse = (response) => {
@@ -334,14 +350,16 @@ const ControlBody = ({ moduleName }) => {
         socket.off("newControlBodyAdded", handleNewControlBodyAdded);
       };
     }
-  }, [socketReady, currentPage, searchTerm, handleUpdateControlBodys, fetchInitialData, handleRefresh]);
+  }, [socketReady, handleUpdateControlBodys, fetchInitialData, handleRefresh]);
 
+  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
+  // Modal handling for edit
   const handleEditMissing = (row) => {
     setSelectedRow(row);
     setModalOpen(true);
@@ -394,14 +412,14 @@ const ControlBody = ({ moduleName }) => {
         <div className='flex flex-col md:flex-row justify-between pb-4 gap-3 flex-shrink-0'>
           <div className='flex items-center gap-2'>
             <span className='text-gray-600'>
-              Total de filas: <span id="rowCount" className='font-bold'>{count || 0}</span>
+              Total de filas: <span id="rowCount" className='font-bold'>{filteredCount || 0}</span>
             </span>
-            
+
             {/* Mostrar chip de filtro activo */}
             {statusFilter && (
-              <Chip 
-                label={`Estado: ${statusFilter}`} 
-                color="primary" 
+              <Chip
+                label={`Estado: ${statusFilter}`}
+                color="primary"
                 variant="outlined"
                 onDelete={handleClearFilter}
                 size="small"
@@ -430,8 +448,8 @@ const ControlBody = ({ moduleName }) => {
               onClose={handleMenuClose}
             >
               {availableStatuses.map((status) => (
-                <MenuItem 
-                  key={status} 
+                <MenuItem
+                  key={status}
                   onClick={() => handleFilterSelect(status)}
                   selected={statusFilter === status}
                 >
@@ -505,12 +523,17 @@ const ControlBody = ({ moduleName }) => {
 
         <div className='flex-1 relative overflow-hidden'>
           <CRUDTable
-            data={statusFilter ? filteredData : data}
+            data={displayData}
             loading={loading}
-            count={statusFilter ? filteredData.length : count}
+            count={filteredCount}
             onEdit={handleEditMissing}
-            currentPage={currentPage}
+            currentPage={currentPage - 1}
             onPageChange={handlePageChange}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            pagination={true}
+            filter={true}
+            activeFilter={statusFilter}
           />
         </div>
       </div>
