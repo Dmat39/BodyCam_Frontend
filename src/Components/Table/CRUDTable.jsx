@@ -44,6 +44,7 @@ const CRUDTable = memo(({
     ArrLookup = [],
     loading = false,
     rowOnClick = null,
+    selectedRowId = null,  // Añade esta prop
     count = 100,
     noDataText = 'No hay datos registrados.',
     filter = false,
@@ -52,7 +53,7 @@ const CRUDTable = memo(({
     onPageChange,
     rowsPerPage = 20,
     onRowsPerPageChange,
-    activeFilter = '' // Nuevo prop para recibir el estado de filtro activo
+    activeFilter = ''
 }) => {
 
     const headers = data.length > 0
@@ -88,7 +89,7 @@ const CRUDTable = memo(({
         const statusParam = searchParams.get('status');
 
         let filteredData = [...data];
-        
+
         // Aplicar filtro de búsqueda
         if (searchParam && filter) {
             const lowerCaseSearch = searchParam.toLowerCase();
@@ -101,12 +102,12 @@ const CRUDTable = memo(({
 
         // Aplicar filtro de estado (El filtrado real se hace en el componente padre, 
         // pero aquí manejamos la visualización)
-        
+
         const dataWithIndex = filteredData.map((item, index) => ({
             ...item,
             index: index + 1,
         }));
-        
+
         setSortedData(SortData(dataWithIndex, orderBy, orderDirection));
     }, [location.search, data, orderBy, orderDirection, filter, activeFilter]);
 
@@ -161,7 +162,7 @@ const CRUDTable = memo(({
                                                                 sx={headerStyles}
                                                             >
                                                                 {header.charAt(0).toUpperCase() + header.slice(1)}
-                                                               
+
                                                             </TableSortLabel>
                                                         </TableCell>
                                                     ))}
@@ -176,7 +177,8 @@ const CRUDTable = memo(({
                                                 {sortedData.map((row, idx) => (
                                                     <TableRow
                                                         onClick={(e) => typeof rowOnClick === 'function' && rowOnClick(e, row)}
-                                                        className={`${typeof rowOnClick === 'function' ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                                                        className={`${typeof rowOnClick === 'function' ? 'cursor-pointer hover:bg-gray-100' : ''} 
+                                                                ${selectedRowId === row.id ? 'bg-gray-200' : ''}`}
                                                         key={row.id || row.dni || idx}
                                                         sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                                     >
@@ -251,8 +253,8 @@ const CRUDTable = memo(({
                                 {pagination && (
                                     <div className='flex-shrink-0 mt-2 border-t'>
                                         {/* Usar los props de paginación directamente en vez de CustomTablePagination */}
-                                        <CustomTablePagination 
-                                            count={count} 
+                                        <CustomTablePagination
+                                            count={count}
                                             page={currentPage}
                                             onPageChange={onPageChange}
                                             rowsPerPage={rowsPerPage}
@@ -264,8 +266,8 @@ const CRUDTable = memo(({
                         ) :
                             (
                                 <div className='text-center text-sm mt-6 w-full'>
-                                    {activeFilter ? 
-                                        `No hay datos para el filtro: ${activeFilter}` : 
+                                    {activeFilter ?
+                                        `No hay datos para el filtro: ${activeFilter}` :
                                         noDataText}
                                 </div>
                             )
