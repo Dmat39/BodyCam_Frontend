@@ -49,8 +49,7 @@ const Last = ({ ultima, click }) => {
 
     return (
         <>
-            {/* <div className="bg-[#DC3545] rounded-md text-white min-w-[250px] min-h-[200px] w-[250px] p-3 flex flex-col"> */}
-            <div className={`flex flex-col border-4 border-[#DC3545] min-w-[220px] p-3 min-h-[200px] w-[250px] text-black ${click ? "visible" : "invisible"} ${active ? "glowing-border" : ""}`}>
+            <div className={`flex flex-col border-4 border-[#DC3545] min-w-[220px] p-3 min-h-[200px] w-[250px] text-black ${click ? "visible" : "invisible"} ${active ? "glowing-border" : ""} hover:shadow-2xl transition-shadow duration-300 ease-in-out`}>
                 <p className="flex justify-center items-center text-[11px] my-1 h-[45px]">
                     <img src={img1} className="size-8 bg-white rounded-full mr-1" />{ultima?.titulo}</p>
                 <p className="flex justify-start items-center text-[10px] my-1 h-[45px]" >
