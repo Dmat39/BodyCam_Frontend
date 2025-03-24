@@ -258,7 +258,7 @@ const BaseDatos = ({ moduleName }) => {
   }, [token, handleUpdateBodyCams, fetchInitialData, handleSocketReconnect, handleRefresh, currentPage]);
 
   return (
-    <div className='h-full flex flex-col w-full bg-gray-100 p-4'>
+    <div className='flex flex-col w-full h-screen max-h-screen overflow-hidden'>
       {/* Encabezado */}
       <header className="text-white bg-green-700 py-4 px-3 mb-6 w-full rounded-lg flex justify-center relative">
         <Link onClick={() => navigate(-1)} className='flex items-center gap-1'>
@@ -268,7 +268,7 @@ const BaseDatos = ({ moduleName }) => {
       </header>
 
       {/* Contenido principal */}
-      <main className='flex-1 bg-white shadow rounded-lg p-4 h-full overflow-hidden'>
+      <div className='flex-1 flex flex-col bg-white shadow rounded-lg p-4 overflow-hidden'>
         <div className='flex flex-col w-full h-full'>
 
           {/* Barra superior (count, buscar, refrescar, botón crear) */}
@@ -309,7 +309,7 @@ const BaseDatos = ({ moduleName }) => {
           </div>
 
           {/* Tabla de BodyCams */}
-          <div className='relative h-full'>
+          <div className='flex-1 relative overflow-hidden'>
             {loading && (
               <div className='absolute inset-0 bg-white bg-opacity-60 flex items-center justify-center z-10'>
                 <div className='animate-pulse text-green-700 font-semibold'>Cargando...</div>
@@ -322,7 +322,7 @@ const BaseDatos = ({ moduleName }) => {
             />
           </div>
         </div>
-      </main>
+      </div>
 
       <Snackbar
         open={openSnackbar}

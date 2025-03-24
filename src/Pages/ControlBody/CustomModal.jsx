@@ -17,15 +17,19 @@ import {
 
 const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
   const [detalles, setDetalles] = useState('');
-  const [status, setStatus] = useState('EN CAMPO');
-  const [formModified, setFormModified] = useState(false);
+  const [status, setStatus] = useState('EN CECOM');
+  const [numeroUnidad, setNumeroUnidad] = useState('');
+  const [formModified, setFormModified] = useState(true);
 
   // Update states when rowData changes or when modal opens
   useEffect(() => {
     if (rowData && open) {
       setDetalles(rowData.detalles || 'NINGUNO');
-      setStatus(rowData.status || 'EN CAMPO');
-      setFormModified(false);
+      // Establecer el status inicial a EN CECOM cuando se abre el modal
+      setStatus('EN CECOM');
+      setNumeroUnidad(rowData.Unidad || '');
+      // Garantizar que el botón de guardar esté activo desde el inicio
+      setFormModified(true);
     }
   }, [rowData, open]);
 
@@ -35,31 +39,30 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
   };
 
   const handleSave = () => {
-    // Get current date and time for the update
     const now = new Date();
     const formattedDate = now.toISOString().split('T')[0];
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const formattedTime = `${hours}:${minutes}`;
-
-    // Return all fields, including the ID and current date/time
-    onSave({
+  
+    const payload = {
       id: rowData.id,
       fecha_devolucion: formattedDate,
       hora_devolucion: formattedTime,
       detalles,
       status
-    });
+    };
+
+    // Only include numero_unidad if it was changed
+    if (numeroUnidad !== rowData.Unidad && numeroUnidad.trim() !== '') {
+      payload.numero_unidad = numeroUnidad;
+    }
+
+    onSave(payload);
   };
 
   const handleClose = () => {
-    if (formModified) {
-      if (window.confirm('¿Estás seguro de cerrar sin guardar los cambios?')) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
+    onClose();
   };
 
   return (
@@ -90,7 +93,7 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
           sx={{ marginBottom: 2 }}
         />
         
-        <FormControl fullWidth margin="dense">
+        <FormControl fullWidth margin="dense" sx={{ marginBottom: 2 }}>
           <InputLabel id="status-label">Status</InputLabel>
           <Select
             labelId="status-label"
@@ -102,6 +105,15 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
             <MenuItem value="EN CECOM">EN CECOM</MenuItem>
           </Select>
         </FormControl>
+
+        <TextField
+          label="Número de Unidad"
+          value={numeroUnidad}
+          onChange={handleInputChange(setNumeroUnidad)}
+          fullWidth
+          margin="dense"
+          helperText="Opcional: Actualizar el número de unidad"
+        />
       </DialogContent>
       <DialogActions sx={{ padding: 2, borderTop: '1px solid #e0e0e0' }}>
         <Button 

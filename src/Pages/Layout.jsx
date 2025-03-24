@@ -7,11 +7,11 @@ const Layout = () => {
     const [toggled, setToggled] = useState(false);
 
     return (
-        <div className='flex h-full'>
+        <div className='flex h-full w-full'>
             <Sidebar toggled={toggled} setToggled={setToggled} />
-            <div className='w-full h-full'>
+            <div className='flex w-full h-full overflow-auto relative'>
                 <Header toggled={toggled} setToggled={setToggled} />
-                <div className='content-body h-full bg-gray-100 p-4 overflow-hidden overflow-y-auto'>
+                <div className='content-body bg-gray-100 flex overflow-hidden justify-center items-center max-w-full w-full h-full'>
                     <Outlet />
                 </div>
             </div>

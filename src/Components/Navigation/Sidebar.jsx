@@ -15,7 +15,7 @@ const Sidebar = ({ toggled, setToggled }) => {
   const MenuItems = [
     {
       id: 1,
-      label: 'Inicio',
+      label: 'Dashboard',
       icon: DashboardIcon,
       link: '/',
       target: '_self'

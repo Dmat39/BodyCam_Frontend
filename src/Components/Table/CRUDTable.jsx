@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useState } from 'react';
-import { IconButton, Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, TableSortLabel, Tooltip } from '@mui/material';
+import { IconButton, Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, TableSortLabel, Tooltip, Chip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -44,11 +44,16 @@ const CRUDTable = memo(({
     ArrLookup = [],
     loading = false,
     rowOnClick = null,
+    selectedRowId = null,  // Añade esta prop
     count = 100,
     noDataText = 'No hay datos registrados.',
     filter = false,
     pagination = true,
-
+    currentPage = 0,
+    onPageChange,
+    rowsPerPage = 20,
+    onRowsPerPageChange,
+    activeFilter = ''
 }) => {
 
     const headers = data.length > 0
@@ -61,8 +66,8 @@ const CRUDTable = memo(({
     const [orderDirection, setOrderDirection] = useState('asc');
     const [sortedData, setSortedData] = useState([]);
     const searchParams = new URLSearchParams(location.search);
-    const page = searchParams.get('page') || 1;
-    const limit = searchParams.get('limit') || 20;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
 
     const handleSortRequest = (property) => {
         const isAsc = orderBy === property && orderDirection === 'asc';
@@ -81,28 +86,30 @@ const CRUDTable = memo(({
     useEffect(() => {
         const searchParams = new URLSearchParams(location.search);
         const searchParam = searchParams.get('search');
+        const statusParam = searchParams.get('status');
 
+        let filteredData = [...data];
+
+        // Aplicar filtro de búsqueda
         if (searchParam && filter) {
             const lowerCaseSearch = searchParam.toLowerCase();
-            const filteredData = data.filter((item) =>
+            filteredData = filteredData.filter((item) =>
                 headers.some((key) =>
-                    item[key]?.toString().toLowerCase().includes(lowerCaseSearch)
+                    String(item[key]).toLowerCase().includes(lowerCaseSearch)
                 )
             );
-            const filteredDataWithIndex = filteredData.map((item, index) => ({
-                ...item,
-                index: index + 1,
-            }));
-
-            setSortedData(SortData(filteredDataWithIndex, orderBy, orderDirection));
-        } else {
-            const dataWithIndex = data.map((item, index) => ({
-                ...item,
-                index: index + 1,
-            }));
-            setSortedData(SortData(dataWithIndex, orderBy, orderDirection));
         }
-    }, [location.search, data, orderBy, orderDirection]);
+
+        // Aplicar filtro de estado (El filtrado real se hace en el componente padre, 
+        // pero aquí manejamos la visualización)
+
+        const dataWithIndex = filteredData.map((item, index) => ({
+            ...item,
+            index: index + 1,
+        }));
+
+        setSortedData(SortData(dataWithIndex, orderBy, orderDirection));
+    }, [location.search, data, orderBy, orderDirection, filter, activeFilter]);
 
     return (
         <div className='flex flex-col h-full w-full'>
@@ -155,6 +162,7 @@ const CRUDTable = memo(({
                                                                 sx={headerStyles}
                                                             >
                                                                 {header.charAt(0).toUpperCase() + header.slice(1)}
+
                                                             </TableSortLabel>
                                                         </TableCell>
                                                     ))}
@@ -166,14 +174,15 @@ const CRUDTable = memo(({
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                {sortedData.map((row) => (
+                                                {sortedData.map((row, idx) => (
                                                     <TableRow
                                                         onClick={(e) => typeof rowOnClick === 'function' && rowOnClick(e, row)}
-                                                        className={`${typeof rowOnClick === 'function' ? 'cursor-pointer hover:bg-gray-100' : ''}`}
-                                                        key={row.id || row.dni}
+                                                        className={`${typeof rowOnClick === 'function' ? 'cursor-pointer hover:bg-gray-100' : ''} 
+                                                                ${selectedRowId === row.id ? 'bg-gray-200' : ''}`}
+                                                        key={row.id || row.dni || idx}
                                                         sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                                                     >
-                                                        <TableCell>{(row.index + (page - 1) * limit)}</TableCell>
+                                                        <TableCell>{(row.index + (currentPage) * rowsPerPage)}</TableCell>
                                                         {headers.map((header) => {
                                                             const lookup = ArrLookup.find(item => item.key === header);
                                                             const value = lookup ? getValueById(row[header], lookup.obj) : row[header];
@@ -243,14 +252,23 @@ const CRUDTable = memo(({
                                 {/* Pagination is now rendered outside the scrollable area */}
                                 {pagination && (
                                     <div className='flex-shrink-0 mt-2 border-t'>
-                                        <CustomTablePagination count={count} />
+                                        {/* Usar los props de paginación directamente en vez de CustomTablePagination */}
+                                        <CustomTablePagination
+                                            count={count}
+                                            page={currentPage}
+                                            onPageChange={onPageChange}
+                                            rowsPerPage={rowsPerPage}
+                                            onRowsPerPageChange={onRowsPerPageChange}
+                                        />
                                     </div>
                                 )}
                             </div>
                         ) :
                             (
                                 <div className='text-center text-sm mt-6 w-full'>
-                                    {noDataText}
+                                    {activeFilter ?
+                                        `No hay datos para el filtro: ${activeFilter}` :
+                                        noDataText}
                                 </div>
                             )
                     }
@@ -282,4 +300,4 @@ const headerStyles = {
             color: 'white !important',
         }
     }
-}
+};

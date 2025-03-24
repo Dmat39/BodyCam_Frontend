@@ -14,12 +14,15 @@ import {
   FormHelperText,
   InputAdornment,
   Chip,
+  Stack,
+  Divider
 } from "@mui/material";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
 import AddIcon from "@mui/icons-material/Add";
 import HelpIcon from "@mui/icons-material/Help";
 import VideocamIcon from "@mui/icons-material/Videocam";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useFormik } from "formik";
 import CustomSwal, { swalError } from "../../helpers/swalConfig";
 import { socket } from "../../Components/Socket/socket";
@@ -73,6 +76,9 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [bodycams, setBodycams] = useState([
+    { numero: "", jurisdiccion: "", unidad: "" }
+  ]);
 
   const toggleHelp = () => {
     setShowHelp(!showHelp);
@@ -91,6 +97,7 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
           );
           // Limpiar el formulario
           formik.resetForm();
+          setBodycams([{ numero: "", jurisdiccion: "", unidad: "" }]);
           // Actualizar la lista usando la página actual
           socket.emit("getAllControlBodys", {
             page: currentPage,
@@ -118,67 +125,94 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
 
   const handleClose = () => {
     formik.resetForm();
+    setBodycams([{ numero: "", jurisdiccion: "", unidad: "" }]);
     setOpen(false);
     setShowHelp(false);
   };
 
   const formik = useFormik({
     initialValues: {
-      numerosBodycam: "",
       nombres: "",
       apellidos: "",
       dni: "",
       turno: "",
-      jurisdiccion: "",
       funcion: "",
-      unidad: "",
     },
     validate: (values) => {
       const errors = {};
       const camposRequeridos = [
-        "numerosBodycam",
         "nombres",
         "apellidos",
         "dni",
         "turno",
-        "jurisdiccion",
         "funcion",
-        "unidad",
       ];
+      
       camposRequeridos.forEach((campo) => {
         if (!values[campo]) {
           errors[campo] = "Campo requerido";
         }
       });
+      
       if (values.dni && !/^\d+$/.test(values.dni)) {
         errors.dni = "El DNI debe contener solo números";
       }
+      
+      // Validar que haya al menos una bodycam con datos completos
+      const bodycamIncompleta = bodycams.some(
+        (bc) => !bc.numero || !bc.jurisdiccion || !bc.unidad
+      );
+      
+      if (bodycamIncompleta) {
+        errors.bodycams = "Todas las bodycams deben tener número, jurisdicción y unidad";
+      }
+      
       return errors;
     },
     onSubmit: (values) => {
+      // Verificar si hay bodycams incompletas
+      const bodycamIncompleta = bodycams.some(
+        (bc) => !bc.numero || !bc.jurisdiccion || !bc.unidad
+      );
+      
+      if (bodycamIncompleta) {
+        CustomSwal.fire(
+          "Error",
+          "Todas las bodycams deben tener número, jurisdicción y unidad",
+          "error"
+        );
+        return;
+      }
+
       // Obtener fecha y hora actual exacta
       const currentDateTime = dayjs();
       const fechaEntrega = currentDateTime.format("YYYY-MM-DD");
       const horaEntrega = currentDateTime.format("HH:mm:ss");
 
-      const numerosBodycamArray = values.numerosBodycam
-        .split(",")
-        .map((num) => num.trim())
-        .filter((num) => num);
+      // Crear un array para almacenar todas las solicitudes
+      const solicitudes = [];
 
-      const datosEnvio = {
-        ...values,
-        numeros: numerosBodycamArray,
-        fecha_entrega: fechaEntrega,
-        hora_entrega: horaEntrega,
-        status: "EN CAMPO",
-      };
+      // Por cada bodycam, crear una solicitud separada
+      bodycams.forEach((bodycam) => {
+        const datosEnvio = {
+          ...values,
+          numeros: [bodycam.numero.trim()],
+          jurisdiccion: bodycam.jurisdiccion,
+          unidad: bodycam.unidad,
+          fecha_entrega: fechaEntrega,
+          hora_entrega: horaEntrega,
+          status: "EN CAMPO",
+        };
+        solicitudes.push(datosEnvio);
+      });
 
       setIsSubmitting(true);
       setOpen(false);
 
-      // Emitir evento sin callback
-      socket.emit("createControlBody", datosEnvio);
+      // Emitir eventos para cada bodycam
+      solicitudes.forEach((solicitud) => {
+        socket.emit("createControlBody", solicitud);
+      });
     },
   });
 
@@ -200,6 +234,26 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
     }
   };
 
+  // Manejo de cambios en los campos de bodycam
+  const handleBodycamChange = (index, field, value) => {
+    const nuevasBodycams = [...bodycams];
+    nuevasBodycams[index][field] = value;
+    setBodycams(nuevasBodycams);
+  };
+
+  // Agregar una nueva bodycam
+  const agregarBodycam = () => {
+    setBodycams([...bodycams, { numero: "", jurisdiccion: "", unidad: "" }]);
+  };
+
+  // Eliminar una bodycam
+  const eliminarBodycam = (index) => {
+    if (bodycams.length > 1) {
+      const nuevasBodycams = bodycams.filter((_, i) => i !== index);
+      setBodycams(nuevasBodycams);
+    }
+  };
+
   return (
     <>
       <Tooltip title="Registrar Control de Bodycam" placement="top" arrow>
@@ -217,15 +271,19 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
           boxShadow: 3,
           borderRadius: 0,
           overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "85vh" // Limitar la altura máxima al 85% de la altura de la ventana
         }}>
-          {/* Header verde que ocupa todo el ancho */}
+          {/* Header verde que ocupa todo el ancho - siempre visible */}
           <Box sx={{
             p: 2,
             backgroundColor: "#1b5e20",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 1
+            gap: 1,
+            flexShrink: 0 // Evitar que el encabezado se encoja
           }}>
             <VideocamIcon sx={{ color: "#fff" }} />
             <Typography variant="h6" fontWeight="bold" textAlign="center" color="#fff">
@@ -233,78 +291,14 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
             </Typography>
           </Box>
 
-          {/* Contenido del formulario */}
-          <Box sx={{ p: 3 }}>
+          {/* Contenido del formulario - área scrollable */}
+          <Box sx={{ 
+            p: 3, 
+            overflow: "auto", // Habilitar el scroll
+            flexGrow: 1 // Permitir que este contenedor crezca y se encoja
+          }}>
             <form onSubmit={formik.handleSubmit}>
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: "bold", color: "#1b5e20" }}>
-                    Números de Bodycam
-                  </Typography>
-                  <Tooltip title="Mostrar ayuda">
-                    <IconButton size="small" onClick={toggleHelp}>
-                      <HelpIcon fontSize="small" color="primary" />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-
-                {showHelp && (
-                  <Box sx={{
-                    backgroundColor: "#f1f8e9",
-                    p: 1,
-                    borderRadius: 1,
-                    mb: 1,
-                    border: "1px dashed #4caf50"
-                  }}>
-                    <Typography variant="caption">
-                      Ingrese los códigos de bodycam separados por comas. Por ejemplo:
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 0.5 }}>
-                      <Chip label="SG001" color="success" variant="outlined" size="small" />
-                      <Chip label="SG002" color="success" variant="outlined" size="small" />
-                      <Chip label="SG003" color="success" variant="outlined" size="small" />
-                    </Box>
-                    <Typography variant="caption" sx={{ mt: 0.5, fontStyle: "italic" }}>
-                      Ejemplo: SG001, SG002, SG003
-                    </Typography>
-                  </Box>
-                )}
-
-                <TextField
-                  name="numerosBodycam"
-                  placeholder="Ej: SG001, SG002, SG003"
-                  value={formik.values.numerosBodycam}
-                  onChange={formik.handleChange}
-                  fullWidth
-                  error={Boolean(formik.errors.numerosBodycam)}
-                  helperText={formik.errors.numerosBodycam}
-                  variant="outlined"
-                  size="small"
-                  InputProps={{
-                    style: { fontSize: "0.875rem" },
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <VideocamIcon color="primary" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    backgroundColor: "#fff",
-                    "& .MuiOutlinedInput-root": {
-                      "& fieldset": {
-                        borderColor: "#4caf50",
-                      },
-                      "&:hover fieldset": {
-                        borderColor: "#2e7d32",
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "#2e7d32",
-                      },
-                    },
-                  }}
-                />
-              </Box>
-
+              {/* Campos de datos personales */}
               <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mb: 2 }}>
                 <TextField
                   label="DNI"
@@ -386,33 +380,6 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
                   )}
                 </FormControl>
 
-                {/* Select para Jurisdicción */}
-                <FormControl
-                  fullWidth
-                  error={Boolean(formik.errors.jurisdiccion && formik.touched.jurisdiccion)}
-                  size="small"
-                >
-                  <InputLabel id="jurisdiccion-label" sx={{ fontSize: "0.875rem" }}>Jurisdicción</InputLabel>
-                  <Select
-                    labelId="jurisdiccion-label"
-                    id="jurisdiccion"
-                    name="jurisdiccion"
-                    value={formik.values.jurisdiccion}
-                    onChange={formik.handleChange}
-                    label="Jurisdicción"
-                    sx={{ fontSize: "0.875rem" }}
-                  >
-                    {JURISDICCIONES.map((jurisdiccion) => (
-                      <MenuItem key={jurisdiccion} value={jurisdiccion}>
-                        {jurisdiccion}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {formik.touched.jurisdiccion && formik.errors.jurisdiccion && (
-                    <FormHelperText>{formik.errors.jurisdiccion}</FormHelperText>
-                  )}
-                </FormControl>
-
                 <TextField
                   label="Función"
                   name="funcion"
@@ -429,70 +396,199 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
                     style: { fontSize: "0.875rem" },
                   }}
                 />
-
-                <TextField
-                  label="Unidad"
-                  name="unidad"
-                  {...formik.getFieldProps("unidad")}
-                  fullWidth
-                  error={Boolean(formik.errors.unidad && formik.touched.unidad)}
-                  helperText={formik.touched.unidad && formik.errors.unidad}
-                  variant="outlined"
-                  size="small"
-                  InputProps={{
-                    style: { fontSize: "0.875rem" },
-                  }}
-                  InputLabelProps={{
-                    style: { fontSize: "0.875rem" },
-                  }}
-                />
               </Box>
 
-              <Box sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mt: 2,
-                pt: 2
-              }}>
-                <Button
-                  type="button"
-                  variant="outlined"
-                  color="error"
-                  onClick={handleClose}
-                  disabled={isSubmitting}
-                  sx={{
-                    textTransform: "none",
+              <Divider sx={{ my: 2 }} />
+
+              {/* Sección de bodycams */}
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 1, justifyContent: "space-between" }}>
+                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: "bold", color: "#1b5e20" }}>
+                      Bodycams
+                    </Typography>
+                    <Tooltip title="Mostrar ayuda">
+                      <IconButton size="small" onClick={toggleHelp}>
+                        <HelpIcon fontSize="small" color="primary" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    onClick={agregarBodycam}
+                    startIcon={<AddIcon />}
+                    sx={{ 
+                      textTransform: "none",
+                      fontSize: "0.75rem"
+                    }}
+                  >
+                    Agregar bodycam
+                  </Button>
+                </Box>
+
+                {showHelp && (
+                  <Box sx={{
+                    backgroundColor: "#f1f8e9",
+                    p: 1,
                     borderRadius: 1,
-                    px: 3,
-                    py: 1,
-                    fontSize: "0.875rem",
-                    fontWeight: "bold"
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="success"
-                  disabled={isSubmitting}
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 1,
-                    px: 3,
-                    py: 1,
-                    fontSize: "0.875rem",
-                    fontWeight: "bold",
-                    backgroundColor: "#2e7d32",
-                    "&:hover": {
-                      backgroundColor: "#1b5e20",
-                    }
-                  }}
-                >
-                  {isSubmitting ? "Registrando..." : "Registrar"}
-                </Button>
+                    mb: 1,
+                    border: "1px dashed #4caf50"
+                  }}>
+                    <Typography variant="caption">
+                      Ingrese los datos para cada bodycam. Puede agregar múltiples bodycams usando el botón "Agregar bodycam".
+                    </Typography>
+                  </Box>
+                )}
+
+                {bodycams.map((bodycam, index) => (
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      border: "1px solid #e0e0e0", 
+                      p: 2, 
+                      borderRadius: 1, 
+                      mb: 2,
+                      backgroundColor: "#f9f9f9"
+                    }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                        Bodycam #{index + 1}
+                      </Typography>
+                      {bodycams.length > 1 && (
+                        <IconButton 
+                          size="small" 
+                          color="error" 
+                          onClick={() => eliminarBodycam(index)}
+                          sx={{ p: 0.5 }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                    </Box>
+
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, gap: 1 }}>
+                      <TextField
+                        label="Número"
+                        placeholder="Ej: SG001"
+                        value={bodycam.numero}
+                        onChange={(e) => handleBodycamChange(index, "numero", e.target.value)}
+                        fullWidth
+                        error={!bodycam.numero && formik.touched.bodycams}
+                        variant="outlined"
+                        size="small"
+                        InputProps={{
+                          style: { fontSize: "0.875rem" },
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <VideocamIcon color="primary" fontSize="small" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        InputLabelProps={{
+                          style: { fontSize: "0.875rem" },
+                        }}
+                      />
+
+                      <FormControl
+                        fullWidth
+                        error={!bodycam.jurisdiccion && formik.touched.bodycams}
+                        size="small"
+                      >
+                        <InputLabel id={`jurisdiccion-label-${index}`} sx={{ fontSize: "0.875rem" }}>
+                          Jurisdicción
+                        </InputLabel>
+                        <Select
+                          labelId={`jurisdiccion-label-${index}`}
+                          value={bodycam.jurisdiccion}
+                          onChange={(e) => handleBodycamChange(index, "jurisdiccion", e.target.value)}
+                          label="Jurisdicción"
+                          sx={{ fontSize: "0.875rem" }}
+                        >
+                          {JURISDICCIONES.map((jurisdiccion) => (
+                            <MenuItem key={`${index}-${jurisdiccion}`} value={jurisdiccion}>
+                              {jurisdiccion}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      <TextField
+                        label="Unidad"
+                        value={bodycam.unidad}
+                        onChange={(e) => handleBodycamChange(index, "unidad", e.target.value)}
+                        fullWidth
+                        error={!bodycam.unidad && formik.touched.bodycams}
+                        variant="outlined"
+                        size="small"
+                        InputProps={{
+                          style: { fontSize: "0.875rem" },
+                        }}
+                        InputLabelProps={{
+                          style: { fontSize: "0.875rem" },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                ))}
+
+                {formik.errors.bodycams && formik.touched.bodycams && (
+                  <Typography color="error" variant="caption" sx={{ mt: -1, display: "block" }}>
+                    {formik.errors.bodycams}
+                  </Typography>
+                )}
               </Box>
             </form>
+          </Box>
+
+          {/* Botones de acción - siempre visibles al final */}
+          <Box sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            p: 3,
+            borderTop: "1px solid #e0e0e0",
+            backgroundColor: "#f9f9f9",
+            flexShrink: 0 // Evitar que los botones se encojan
+          }}>
+            <Button
+              type="button"
+              variant="outlined"
+              color="error"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              sx={{
+                textTransform: "none",
+                borderRadius: 1,
+                px: 3,
+                py: 1,
+                fontSize: "0.875rem",
+                fontWeight: "bold"
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={formik.handleSubmit}
+              variant="contained"
+              color="success"
+              disabled={isSubmitting}
+              sx={{
+                textTransform: "none",
+                borderRadius: 1,
+                px: 3,
+                py: 1,
+                fontSize: "0.875rem",
+                fontWeight: "bold",
+                backgroundColor: "#2e7d32",
+                "&:hover": {
+                  backgroundColor: "#1b5e20",
+                }
+              }}
+            >
+              {isSubmitting ? "Registrando..." : "Registrar"}
+            </Button>
           </Box>
         </Box>
       </CustomModal>
