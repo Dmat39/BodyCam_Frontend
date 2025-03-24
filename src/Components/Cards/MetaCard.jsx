@@ -16,48 +16,43 @@ const MetaData = ({ rows }) => {
     const [avgKmSIPCOPTurno, setAvgKmSIPCOPTurno] = useState(0);
     const [avgIncidenciasTurno, setAvgIncidenciasTurno] = useState(0);
 
+    const DAILY_GOALS = {
+        kmSipcop: 85,
+        kmGeo: 85,
+        tacticos: 210,
+        incidencias: 3,
+    };
+
     useEffect(() => {
         if (!rows.length) return;
 
         const { cod: currentCod } = getCurrentShift();
         setTurnoActual(getCurrentShift());
 
-        // Define el orden correcto de los turnos
         const shiftOrder = [3, 1, 2];
+        let totalKmSipcop = 0, totalKmGeo = 0, totalTacticos = 0, totalIncidencias = 0;
 
-        // Funciones helper que devuelven número (no string)
-        const parse = fn => turno => Number(fn(rows, turno)) || 0;
-
-        const sumReducer = (acc, fn) => turno => acc + parse(fn)(turno);
-
-        // Calcula estadística por turno actual
-        setAvgKmSIPCOPTurno(parse(getAvgKmSIPCOP)(currentCod));
-        setAvgTacticosTurno(parse(getAvgTacticos)(currentCod));
-        setAvgKmGeosatelitalTurno(parse(getAvgKmGeosatelital)(currentCod));
-        setAvgIncidenciasTurno(parse(getAvgIncidencias)(currentCod));
-
-        // Inicializa acumuladores
-        let totalKmSIPCOP = 0;
-        let totalTacticos = 0;
-        let totalKmGeo = 0;
-        let totalIncidencias = 0;
-
-        // Itera solo hasta el turno actual, en orden 3→1→2
         for (const turno of shiftOrder) {
-            if (turno === currentCod || shiftOrder.indexOf(turno) < shiftOrder.indexOf(currentCod)) {
-                totalKmSIPCOP += parse(getAvgKmSIPCOP)(turno);
-                totalTacticos += parse(getAvgTacticos)(turno);
-                totalKmGeo += parse(getAvgKmGeosatelital)(turno);
-                totalIncidencias += parse(getAvgIncidencias)(turno);
-            }
+            totalKmSipcop += parseFloat(getAvgKmSIPCOP(rows, turno)) || 0;
+            totalKmGeo += parseFloat(getAvgKmGeosatelital(rows, turno)) || 0;
+            totalTacticos += parseFloat(getAvgTacticos(rows, turno)) || 0;
+            totalIncidencias += parseFloat(getAvgIncidencias(rows, turno)) || 0;
             if (turno === currentCod) break;
         }
+        //calcular el porcentaje
+        const pct = (value, goal) => ((value / goal) * 100).toFixed(2);
 
-        // Setea todos los acumulados de una sola vez
-        setAvgKmSIPCOPDia(((totalKmSIPCOP.toFixed(2) / 210) * 100).toFixed(2));
-        setAvgTacticosDia(((totalTacticos.toFixed(2) / 210) * 100).toFixed(2));
-        setAvgKmGeosatelitalDia(((totalKmGeo.toFixed(2) / 210) * 100).toFixed(2));
-        setAvgIncidenciasDia(((totalIncidencias.toFixed(2) / 3) * 100).toFixed(2));
+        // Meta diaria
+        setAvgKmSIPCOPDia(pct(totalKmSipcop, DAILY_GOALS.kmSipcop));
+        setAvgKmGeosatelitalDia(pct(totalKmGeo, DAILY_GOALS.kmGeo));
+        setAvgTacticosDia(pct(totalTacticos, DAILY_GOALS.tacticos));
+        setAvgIncidenciasDia(pct(totalIncidencias, DAILY_GOALS.incidencias));
+
+        // Turno actual
+        setAvgKmSIPCOPTurno(getAvgKmSIPCOP(rows, currentCod));
+        setAvgKmGeosatelitalTurno(getAvgKmGeosatelital(rows, currentCod));
+        setAvgTacticosTurno(getAvgTacticos(rows, currentCod));
+        setAvgIncidenciasTurno(getAvgIncidencias(rows, currentCod));
     }, [rows]);
 
 

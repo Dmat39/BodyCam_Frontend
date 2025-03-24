@@ -1,100 +1,30 @@
-const getAvgKmSIPCOP = (rows, turno) => {
-    let celda = 0;
-    if (rows.length === 0) return;
-    const sliceCount = 38;
-    const sliceRows = rows.slice(0, sliceCount);
-    if (turno == 1) {
-        celda = 25;
-    } else if (turno == 2) {
-        celda = 45;
-    }
-    else if (turno == 3) {
-        celda = 5;
-    }
-    else if (celda == 0)
-        return false;
-    const total = sliceRows.reduce((acc, row) => {
-        const value = Number(row[celda]) || 0;
-        return acc + value;
-    }, 0);
+const SLICE_COUNT = 38;
 
-    return ((total / sliceCount).toFixed(2));
+const getAvgKmSIPCOP = (rows, turno) => avgByTurno(rows, turno, {1:25, 2:45, 3:5});
+
+const getAvgKmGeosatelital = (rows, turno) => avgByTurno(rows, turno, {1:23, 2:43, 3:6});
+
+const getAvgTacticos = (rows, turno) => avgByTurno(rows, turno, {1:20, 2:41, 3:4});
+
+const getAvgIncidencias = (rows, turno) => avgByTurno(rows, turno, {1:27, 2:48, 3:10});
+
+function avgByTurno(rows, turno, cellMap) {
+  if (!Array.isArray(rows) || rows.length === 0) return '0.00';
+
+  const celda = cellMap[turno];
+  if (!celda) return '0.00';
+
+  const sliceRows = rows.slice(0, SLICE_COUNT);
+  const total = sliceRows
+    .map(row => Number(row[celda]) || 0)
+    .reduce((acc, v) => acc + v, 0);
+
+  return (total / SLICE_COUNT).toFixed(2);
 }
 
-const getAvgKmGeosatelital = (rows, turno) => {
-    let celda = 0;
-    if (rows.length === 0) return;
-    const sliceCount = 38;
-    const sliceRows = rows.slice(0, sliceCount);
-    if (turno == 1) {
-        celda = 23;
-    } else if (turno == 2) {
-        celda = 43;
-    }
-    else if (turno == 3) {
-        celda = 6;
-    }
-    else if (celda == 0)
-        return false;
-    const total = sliceRows.reduce((acc, row) => {
-        const value = Number(row[celda]) || 0;
-        return acc + value;
-    }, 0);
-
-    return ((total / sliceCount).toFixed(2));
-}
-
-const getAvgTacticos = (rows, turno) => {
-    let celda = 0;
-    if (rows.length === 0) return;
-    const sliceCount = 38;
-    const sliceRows = rows.slice(0, sliceCount);
-    if (turno == 1) {
-        celda = 20;
-    } else if (turno == 2) {
-        celda = 41;
-    }
-    else if (turno == 3) {
-        celda = 4;
-    }
-    else if (celda == 0)
-        return false;
-    const total = sliceRows.reduce((acc, row) => {
-        const value = Number(row[4]) || 0;
-        return acc + value;
-    }
-        , 0);
-
-    return ((total / sliceCount).toFixed(2));
-}
-
-const getAvgIncidencias = (rows, turno) => {
-    let celda = 0;
-    if (rows.length === 0) return;
-    const sliceCount = 38;
-    const sliceRows = rows.slice(0, sliceCount);
-    if (turno == 1) {
-        celda = 27;
-    } else if (turno == 2) {
-        celda = 48;
-    }
-    else if (turno == 3) {
-        celda = 10;
-    }
-    else if (celda == 0)
-        return false;
-    const total = sliceRows.reduce((acc, row) => {
-        const value = Number(row[celda]) || 0;
-        return acc + value;
-    }
-        , 0);
-
-    return ((total / sliceCount).toFixed(2));
-}
 
 function getCurrentShift(date = new Date()) {
     const hour = date.getHours(); // devuelve 0–23
-
     if (hour >= 7 && hour < 15) {
         return { cod: 1, nombre: "Mañana" }; // 07:00–14:59
     }
