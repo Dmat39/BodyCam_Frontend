@@ -4,7 +4,7 @@ import { LucideUsers } from "lucide-react";
 
 const Card = ({ title, total, percentage, icon: Icon }) => {
   return (
-    <div className="bg-white rounded-xl shadow-md p-4 flex flex-col gap-2 items-center justify-between w-32 border-black border-2">
+    <div className="bg-white rounded-xl shadow-md p-4 flex flex-col gap-2 items-center justify-between w-[128px] h-[156px] border-black border-2">
       <div>
         <p className="text-xs text-gray-500 uppercase">{title}</p>
         <h2 className="text-2xl font-bold text-center">{total.toLocaleString()}</h2>
