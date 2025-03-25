@@ -16,25 +16,37 @@ const procesarControlBodys = (controlBodys) => {
 
   controlBodys.forEach((item) => {
     switch (item.funcions?.funcion) {
-        case "Sereno motorizado":
-            if (item.status === "EN CAMPO") {
-                conteo.moto += 1;
-            }
-            break;
+      case "Sereno motorizado":
+        if (item.status === "EN CAMPO") {
+          conteo.moto += 1;
+        }
+        break;
 
-        case "Sereno conductor":
-            if (item.status === "EN CAMPO") {
-                conteo.camioneta += 1;
-            }
-            break;
+      case "Sereno conductor":
+        if (item.status === "EN CAMPO") {
+          conteo.camioneta += 1;
+        }
+        break;
 
-        case "Sereno a pie":
+      case "Sereno a pie":
+        if (item.status === "EN CAMPO") {
+          conteo.camioneta += 1;
+        }
+        break;
+
+      case "CONDUCTOR":
+        if (item.status === "EN CAMPO") {
+          conteo.camioneta += 1;
+        }
+        break;
+
+        case "Supervisor sector":
             if (item.status === "EN CAMPO") {
                 conteo.camioneta += 1;
             }
             break;
     }
-});
+  });
 
 
   return conteo;
@@ -173,7 +185,7 @@ const CampoPage = () => {
           {/* Cards de Data de información */}
           <a href="/control_bodycam" target="_blank" rel="noopener noreferrer" className="hover:shadow-2xl hover:scale-105" >
             <Card
-              title="Bodycams en Campo"  
+              title="Bodycams en Campo"
               total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
             />
           </a>
@@ -246,7 +258,7 @@ const CampoPage = () => {
             }, {}))}
             total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
           />
-          <a href="http://192.168.30.91:81/" target="_blank" rel="noopener noreferrer"   >
+          <a href="http://192.168.30.91:81/" target="_blank" rel="noopener noreferrer"  className="hover:shadow-2xl hover:scale-105" >
             <Card
               title="Cámaras desactivadas"
               total={camaras.length > 0 ? camaras.length : 0}
@@ -256,7 +268,7 @@ const CampoPage = () => {
 
         </div>
         <div className="border-2 border-blue-200 w-full h-[40%] grid grid-cols-3 px-6 gap-4 justify-items-center items-center">
-          
+
         </div>
         <div className="border-2 border-blue-200 w-full h-[35%] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 md:p-10 place-items-center justify-center content-center">
           {clima ? <a href="https://weather.com/es-GT/tiempo/horario/l/San+Juan+De+Lurigancho+Provincia+de+Lima+Per%C3%BA?canonicalCityId=2acb024069dd3de22b211c32db19df87" target="_blank" rel="noopener noreferrer" className="hover:shadow-2xl hover:scale-105 p-4 flex flex-col gap-2 items-center justify-center w-32 h-36 ">
@@ -279,7 +291,7 @@ const CampoPage = () => {
             ultima={ultima}
             click={true}
           /> : <LoadingCard />}
-          { rows ? <Excel rows={rows} /> : <LoadingCard />}
+          {rows ? <Excel rows={rows} /> : <LoadingCard />}
         </div>
       </div>
     </div >

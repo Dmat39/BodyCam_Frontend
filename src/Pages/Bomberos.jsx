@@ -49,26 +49,26 @@ const Last = ({ ultima, click }) => {
 
     return (
         <>
-            <div className={`flex flex-col border-4 border-[#DC3545] min-w-[220px] p-3 min-h-[200px] w-[250px] text-black ${click ? "visible" : "invisible"} ${active ? "glowing-border" : ""} hover:shadow-2xl transition-shadow duration-300 ease-in-out hover:shadow-2xl hover:scale-105 `}>
-                <p className="flex justify-center items-center text-[11px] my-1 h-[45px]">
+                    <a className="py-auto w-[fit-content] rounded cursor-pointer"
+                        href={`https://sgonorte.bomberosperu.gob.pe/24horas/Home/Map?numparte=${ultima?.parte}`}
+                        target="_blank">
+            <div className={`flex flex-col border-4 border-[#DC3545] min-w-[220px] p-3 min-h-[270px] w-[250px] text-black ${click ? "visible" : "invisible"} ${active ? "glowing-border" : ""} hover:shadow-2xl transition-shadow duration-300 ease-in-out hover:shadow-2xl hover:scale-105 `}>
+                <p className="flex justify-center items-center text-[12px] my-1 h-[45px]">
                     <img src={img1} className="size-8 bg-white rounded-full mr-1" />{ultima?.titulo}</p>
-                <p className="flex justify-start items-center text-[10px] my-1 h-[45px]" >
+                <p className="flex justify-start items-center text-[11px] my-2 h-[45px]" >
                     <img src={img2} className="size-5 mx-[6px] bg-white rounded-xl" />{ultima?.direccion.replace(textoAEliminar, '')}</p>
-                <p className="flex justify-start items-center text-[10px] my-1" >
+                <p className="flex justify-start items-center text-[11px] mt-2" >
                     <img src={img3} className="size-5 mx-[6px] bg-white rounded" />San Juan de Lurigancho</p>
-                <p className="flex justify-start items-center text-[10px] my-1" >
+                <p className="flex justify-start items-center text-[11px] my-1" >
                     <img src={img4} className="size-5 mx-[6px] bg-white rounded-xl " />{ultima?.hora} HRS</p>
-                <p className="flex justify-start items-center text-[10px] my-1" >
+                <p className="flex justify-start items-center text-[11px] my-1" >
                     <img src={img5} className="size-5 mx-[6px] bg-white rounded" />{formatDate(ultima?.fecha)}</p>
-                <p className="flex justify-start items-center text-[10px] my-1" >
+                <p className="flex justify-start items-center text-[11px] my-1" >
                     <img src={img6} className="size-5 mx-[6px] bg-white rounded" />{ultima?.unidadesMoviles.join(" , ")}</p>
                 <div className="flex justify-center items-center">
-                    <a className="border-2 border-red-300 px-2 py-auto w-[fit-content] rounded cursor-pointer"
-                        href={`https://sgonorte.bomberosperu.gob.pe/24horas/Home/Map?numparte=${ultima?.parte}`}
-                        target="_blank"
-                    >Ver detalle</a>
                 </div>
             </div>
+                </a>
         </>
     );
 

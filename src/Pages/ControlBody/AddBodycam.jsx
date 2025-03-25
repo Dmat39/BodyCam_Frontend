@@ -72,6 +72,14 @@ async function fetchEmpleadoData(dni) {
   }
 }
 
+const obtenerTurnoActual = () => {
+  const hora = new Date().getHours();
+  if (hora >= 7 && hora < 15) return "MAÑANA";
+  if (hora >= 15 && hora < 23) return "TARDE";
+  return "NOCHE";
+};
+
+
 const AgregarControlBodycam = ({ currentPage = 1 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,7 +143,7 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
       nombres: "",
       apellidos: "",
       dni: "",
-      turno: "",
+      turno: obtenerTurnoActual(),
       funcion: "",
     },
     validate: (values) => {
