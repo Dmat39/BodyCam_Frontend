@@ -106,7 +106,7 @@ const BaseDatos = ({ moduleName }) => {
    * Manejo de búsqueda (client-side o server-side)
    */
   const handleSearchChange = (event) => {
-    const value = event.target.value;
+    const value = event.target.value.trim();  // Asegúrese de usar trim()
     setSearchTerm(value);
 
     if (timeoutRef.current) {
@@ -114,8 +114,17 @@ const BaseDatos = ({ moduleName }) => {
     }
 
     timeoutRef.current = setTimeout(() => {
-      addParams({ search: value.trim() });
-      // Aquí podrías implementar la búsqueda en el servidor si el backend lo soporta
+      // Update URL params
+      addParams({ search: value, page: 1 });
+
+      // Emit socket event to fetch filtered data
+      socket.emit("getAllBodys", {
+        page: 1,  // Reset to first page when searching
+        limit: 20,
+        search: value,  // Use trimmed value
+        sortBy: 'id',
+        sortOrder: 'desc'
+      });
     }, 800);
   };
 
@@ -319,6 +328,7 @@ const BaseDatos = ({ moduleName }) => {
               data={data}
               loading={loading}
               count={count}
+              currentPage={currentPage - 1}  // Restar 1 para que coincida con el índice de la tabla
             />
           </div>
         </div>
