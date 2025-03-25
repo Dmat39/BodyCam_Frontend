@@ -186,15 +186,15 @@ const ControlBody = ({ moduleName }) => {
   }, []);
 
   // Fetch data from server
-  const fetchInitialData = useCallback(() => {
+  const fetchInitialData = useCallback((searchValue=``) => {
     setLoading(true);
     setError(null);
     socket.emit("getAllControlBodys", {
       page: 1, // Get all records for client-side pagination
-      limit: 1000, // Large limit to get all records
-      search: searchTerm.trim()
+      limit: 50, // Large limit to get all records
+      search: searchValue.trim()
     });
-  }, [searchTerm]);
+  }, []);
 
   const handleSearchChange = (event) => {
     const value = event.target.value;
@@ -219,7 +219,7 @@ const ControlBody = ({ moduleName }) => {
         setOpenSnackbar(true);
         setIsSearching(false);
       }
-    }, 300);
+    });
   };
 
   const handleClearSearch = () => {
