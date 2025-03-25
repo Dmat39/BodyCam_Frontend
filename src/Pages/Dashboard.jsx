@@ -15,31 +15,27 @@ const procesarControlBodys = (controlBodys) => {
   const conteo = { moto: 0, camioneta: 0 };
 
   controlBodys.forEach((item) => {
-    console.log(item.funcions?.funcion);
     switch (item.funcions?.funcion) {
-      case "Sereno motorizado":
-        switch (item.status) {
-          case "EN CAMPO":
-            conteo.moto += 1;
-            break;
-          default:
-            break;
-        }
-        break;
-      default:
-        switch (item.status) {
-          case "EN CAMPO":
-            switch (item.funcions?.funcion) {
-              case "Sereno conductor":
-                conteo.camioneta += 1;
-                break;
-              default:
-                break;
+        case "Sereno motorizado":
+            if (item.status === "EN CAMPO") {
+                conteo.moto += 1;
             }
-        }
-        break;
+            break;
+
+        case "Sereno conductor":
+            if (item.status === "EN CAMPO") {
+                conteo.camioneta += 1;
+            }
+            break;
+
+        case "Sereno a pie":
+            if (item.status === "EN CAMPO") {
+                conteo.camioneta += 1;
+            }
+            break;
     }
-  });
+});
+
 
   return conteo;
 };
@@ -105,7 +101,6 @@ const CampoPage = () => {
           "https://www.senamhi.gob.pe/include/ajax-informacion-diaria-chirilu.php",
           formData
         );
-        console.log("Datos de caudal:", response.data.content); // content["13"] es la ruta hacia el caudal del río Rímac en el objeto de respuesta
         setCaudal(response.data.content["13"]);
 
       } catch (error) {
@@ -127,7 +122,6 @@ const CampoPage = () => {
         if (response.data) {
           setClima(response.data);
         }
-        console.log("Pronóstico del clima:", response.data);
       } catch (error) {
         console.error("Error al obtener el pronóstico del clima:", error);
       }
@@ -152,7 +146,6 @@ const CampoPage = () => {
       try {
         //const response = await axios.get("https://cecomapi.erickpajares.dev/incidents");
         const { data } = await axios.get('/api/incidents');
-        console.log("data bomberos:", data);
         setUltima(data.incidents[0]);
       } catch (error) {
         console.error(error);
@@ -166,7 +159,6 @@ const CampoPage = () => {
   const [conteoVehiculos, setConteoVehiculos] = useState({ moto: 0, camioneta: 0 });
 
   useEffect(() => {
-    console.log("controlBodys:", controlBodys);
     if (controlBodys && controlBodys.length > 0) {
       setConteoVehiculos(procesarControlBodys(controlBodys));
     }
@@ -181,17 +173,7 @@ const CampoPage = () => {
           {/* Cards de Data de información */}
           <a href="/control_bodycam" target="_blank" rel="noopener noreferrer" className="hover:shadow-2xl hover:scale-105" >
             <Card
-              title="Bodycams en Campo"
-              data={Object.values(controlBodys.reduce((acc, item) => {
-                if (item.status === "EN CAMPO") {
-                  if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
-                    const jurisdiccion = item.Jurisdiccions?.jurisdiccion || "Desconocido";
-                    acc[jurisdiccion] = acc[jurisdiccion] || { label: jurisdiccion, value: 0 };
-                    acc[jurisdiccion].value += 1;
-                  }
-                }
-                return acc;
-              }, {}))}
+              title="Bodycams en Campo"  
               total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
             />
           </a>
