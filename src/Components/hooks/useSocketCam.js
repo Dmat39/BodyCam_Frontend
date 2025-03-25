@@ -22,7 +22,6 @@ const useSocket = () => {
     });
 
     socketRef.current.on("cameraStatus", (data) => {
-      console.log("📡 Cámaras desactivadas:", (data));
       setCamaras(data.filter(cam => cam.Status.toLowerCase() === "inactiva"));
     });
 
