@@ -15,8 +15,6 @@ const useSocketControlBody = (token) => {
 
     socketRef.current.on("connect", () => {
       console.log("✅ Conectado al servidor de WebSocket");
-      console.log("🆔 ID de socket:", socketRef.current.id);
-      console.log("🔗 URL de conexión:", import.meta.env.VITE_APP_ENDPOINT);
       socketRef.current.emit("getAllControlBodysGeneral"); // Usar el nombre correcto del evento
     });
 
