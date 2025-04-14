@@ -190,7 +190,7 @@ const CampoPage = () => {
   }, [controlBodys]);
 
   return (
-    <div className="flex flex-col md:flex-row justify-center w-full bg-white" style={{ alignItems: "center", justifyContent: "space-evenly", height: "100vh" }}>
+    <div className="flex flex-col md:flex-row justify-center w-full bg-white" style={{ alignItems: "center", justifyContent: "center", height: "100%" }}>
       {/* Secciones de datos */}
       <div className="border-2 border-red-200 w-[100vw] h-[100vh] flex flex-col justify-center items-center">
         {/* <div className="border-2 border-blue-200 w-full h-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 p-4 md:p-10 justify-items-center items-center"> */}
@@ -212,7 +212,7 @@ const CampoPage = () => {
               total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
             />
           </a>
-          <Card title="Móviles en Campo"
+          <Card title="Oriones libres"
             data={Object.values(controlBodys.reduce((acc, item) => {
               if (item.status === "EN CAMPO") {
                 if (item.funcions?.funcion === "Sereno conductor") {
@@ -226,7 +226,7 @@ const CampoPage = () => {
             total={conteoVehiculos.camioneta}
             icon={Car}
           />
-          <Card title="Motorizados Activos"
+          <Card title="Oriones Meta"
             total={conteoVehiculos.moto}
             data={Object.values(controlBodys.reduce((acc, item) => {
               if (item.status === "EN CAMPO") {
@@ -240,7 +240,7 @@ const CampoPage = () => {
             }, {}))}
           />
           <Card
-            title="Libres en campo"
+            title="Hermes Meta"
             data={Object.values(controlBodys.reduce((acc, item) => {
               if (item.status === "EN CAMPO") {
                 if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
@@ -254,7 +254,7 @@ const CampoPage = () => {
             total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
           />
           <Card
-            title="Metas en campo"
+            title="GIR"
             data={Object.values(controlBodys.reduce((acc, item) => {
               if (item.status === "EN CAMPO") {
                 if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
@@ -268,7 +268,7 @@ const CampoPage = () => {
             total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
           />
           <Card
-            title="Bodycams en Campo"
+            title="Deltas"
             data={Object.values(controlBodys.reduce((acc, item) => {
               if (item.status === "EN CAMPO") {
                 if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
@@ -288,16 +288,47 @@ const CampoPage = () => {
               icon={Camera}
             />
           </a>
+          <Card
+            title="Radios"
+            data={Object.values(controlBodys.reduce((acc, item) => {
+              if (item.status === "EN CAMPO") {
+                if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
+                  const jurisdiccion = item.Jurisdiccions?.jurisdiccion || "Desconocido";
+                  acc[jurisdiccion] = acc[jurisdiccion] || { label: jurisdiccion, value: 0 };
+                  acc[jurisdiccion].value += 1;
+                }
+              }
+              return acc;
+            }, {}))}
+            total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
+          />
+          <Card
+            title="servidores"
+            data={Object.values(controlBodys.reduce((acc, item) => {
+              if (item.status === "EN CAMPO") {
+                if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
+                  const jurisdiccion = item.Jurisdiccions?.jurisdiccion || "Desconocido";
+                  acc[jurisdiccion] = acc[jurisdiccion] || { label: jurisdiccion, value: 0 };
+                  acc[jurisdiccion].value += 1;
+                }
+              }
+              return acc;
+            }, {}))}
+            total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
+          />
 
         </div>
-        <div className="border-2 border-blue-200 w-full h-[40%] grid grid-cols-3 px-6 gap-4 justify-items-center items-center">
+        <div className="border-2 border-blue-200 w-full h-[35%] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 md:p-10 place-items-center justify-center content-center">
           {/* //categories: ['Perú', 'México', 'Chile', 'Colombia'] */}
           {/* series = [
           {name: 'Burgers', data: [120, 200, 90, 150] },
-          {name: 'Tacos', data: [75, 150, 60, 110] },
+          {name: 'Tacos', data: [75, 150, 60, 110] }, 
         //{name: 'Burrito', data: [80, 170, 50, 50] },
           ]; */}
-          <BarChart title={"sadasd"} series={[1, 2, 3, 4]} />
+          <BarChart title={"Incidencias Op. Camaras"} categories={['Perú', 'México', 'Chile', 'Colombia']} series={[{ name: 'Burgers', data: [120, 200, 90, 150] }]} />
+          <BarChart title={"Incidencias Serenos"} categories={['Perú', 'México', 'Chile', 'Colombia']} series={[{ name: 'Burgers', data: [120, 200, 90, 150] }]} />
+          <BarChart title={"Incidencias Telefonia"} categories={['Perú', 'México', 'Chile', 'Colombia']} series={[{ name: 'Burgers', data: [120, 200, 90, 150] }]} />
+          <BarChart title={"% llamadas atendidas"} categories={['Perú', 'México', 'Chile', 'Colombia']} series={[{ name: 'Burgers', data: [120, 200, 90, 150] }]} />
         </div>
         <div className="border-2 border-blue-200 w-full h-[35%] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 md:p-10 place-items-center justify-center content-center">
           {clima ? <a href="https://weather.com/es-GT/tiempo/horario/l/San+Juan+De+Lurigancho+Provincia+de+Lima+Per%C3%BA?canonicalCityId=2acb024069dd3de22b211c32db19df87" target="_blank" rel="noopener noreferrer" className="hover:shadow-2xl hover:scale-105 p-4 flex flex-col gap-2 items-center justify-center w-32 h-36 ">
