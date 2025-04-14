@@ -21,6 +21,7 @@ const useSocketControlBody = (token) => {
     // Escuchar la respuesta correcta del backend
     socketRef.current.on("getAllControlBodysGeneralResponse", (response) => {
       if (response.status === 200) {
+        //console.log("📡 Datos de Control Body recibidos:", response.data);
         setControlBodys(response.data);
       } else {
         console.error("❌ Error al obtener Control Bodies:", response.message);
