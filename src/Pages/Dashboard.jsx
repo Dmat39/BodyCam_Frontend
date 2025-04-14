@@ -19,28 +19,37 @@ const procesarControlBodys = (controlBodys) => {
     // console.log(item.funcions?.funcion);
     switch (item.funcions?.funcion) {
       case "Sereno motorizado":
-        switch (item.status) {
-          case "EN CAMPO":
-            conteo.moto += 1;
-            break;
-          default:
-            break;
+        if (item.status === "EN CAMPO") {
+          conteo.moto += 1;
         }
         break;
-      default:
-        switch (item.status) {
-          case "EN CAMPO":
-            switch (item.funcions?.funcion) {
-              case "Sereno conductor":
+
+      case "Sereno conductor":
+        if (item.status === "EN CAMPO") {
+          conteo.camioneta += 1;
+        }
+        break;
+
+      case "Sereno a pie":
+        if (item.status === "EN CAMPO") {
+          conteo.camioneta += 1;
+        }
+        break;
+
+      case "CONDUCTOR":
+        if (item.status === "EN CAMPO") {
+          conteo.camioneta += 1;
+        }
+        break;
+
+        case "Supervisor sector":
+            if (item.status === "EN CAMPO") {
                 conteo.camioneta += 1;
-                break;
-              default:
-                break;
             }
-        }
-        break;
+            break;
     }
   });
+
 
   return conteo;
 };
@@ -199,16 +208,6 @@ const CampoPage = () => {
           <a href="/control_bodycam" target="_blank" rel="noopener noreferrer" className="hover:shadow-2xl hover:scale-105" >
             <Card
               title="Bodycams en Campo"
-              data={Object.values(controlBodys.reduce((acc, item) => {
-                if (item.status === "EN CAMPO") {
-                  if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
-                    const jurisdiccion = item.Jurisdiccions?.jurisdiccion || "Desconocido";
-                    acc[jurisdiccion] = acc[jurisdiccion] || { label: jurisdiccion, value: 0 };
-                    acc[jurisdiccion].value += 1;
-                  }
-                }
-                return acc;
-              }, {}))}
               total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
             />
           </a>
@@ -281,7 +280,7 @@ const CampoPage = () => {
             }, {}))}
             total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
           />
-          <a href="http://192.168.30.91:81/" target="_blank" rel="noopener noreferrer"   >
+          <a href="http://192.168.30.91:81/" target="_blank" rel="noopener noreferrer"  className="hover:shadow-2xl hover:scale-105" >
             <Card
               title="Cámaras desactivadas"
               total={camaras.length > 0 ? camaras.length : 0}
