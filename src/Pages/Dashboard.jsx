@@ -13,38 +13,30 @@ import Excel from "../Components/Cards/MetaCard";
 import BarChart from "../Components/Graphics/BarChart";
 
 const procesarControlBodys = (controlBodys) => {
-  const conteo = { moto: 0, camioneta: 0 };
+  const conteo = { motolibre: 0, camionetalibre: 0,camionetameta: 0, Deltas: 0 };
 
   controlBodys.forEach((item) => {
-    // console.log(item.funcions?.funcion);
-    switch (item.funcions?.funcion) {
-      case "Sereno motorizado":
-        if (item.status === "EN CAMPO") {
-          conteo.moto += 1;
-        }
+    console.log(item.Unidads?.transporte);
+    switch (item.Unidads?.transporte) {
+      case "MOTOCICLETA-LIBRE":
+          conteo.motolibre += 1;
         break;
 
-      case "Sereno conductor":
-        if (item.status === "EN CAMPO") {
-          conteo.camioneta += 1;
-        }
+      case "CAMIONETA-LIBRE":
+          conteo.camionetalibre += 1;
         break;
 
-      case "Sereno a pie":
-        if (item.status === "EN CAMPO") {
-          conteo.camioneta += 1;
-        }
+      case "CAMIONETA-META":
+          conteo.camionetameta += 1;
         break;
 
-      case "CONDUCTOR":
-        if (item.status === "EN CAMPO") {
-          conteo.camioneta += 1;
-        }
+      case "D":
+          conteo.Deltas += 1;
         break;
 
         case "Supervisor sector":
             if (item.status === "EN CAMPO") {
-                conteo.camioneta += 1;
+                conteo.camionetalibre += 1;
             }
             break;
     }
@@ -56,6 +48,7 @@ const procesarControlBodys = (controlBodys) => {
 
 // Página principal
 const CampoPage = () => {
+  const [incidenciasData, setIncidenciasData] = useState([]);
 
   const [clima, setClima] = useState(null);
   const [caudal, setCaudal] = useState(null);
@@ -162,15 +155,28 @@ const CampoPage = () => {
   }, []);
 
   useEffect(() => {
-    const fetchDataIncidencia = async () => {
+    const fetchIncidencias = async () => {
       try {
-        const response = await axios.get("http://172.16.10.20:3000/api/preincidencias/historial");
-        // console.log("data:", response.data);
+        const response = await fetch(import.meta.env.VITE_INCIDENCIAS);
+        const data = await response.json();
+        console.log("Datos de incidencias:", data);
+
+        // Transforma los datos según sea necesario para los gráficos
+        const categories = data.map(item => item.jurisdiccion); // Ejemplo: extraer jurisdicciones
+        const series = [
+          {
+            name: 'Incidencias',
+            data: data.map(item => item.totalIncidencias), // Ejemplo: extraer totales
+          },
+        ];
+
+        setIncidenciasData({ categories, series });
       } catch (error) {
-        console.error(error);
+        console.error('Error fetching incidencias:', error);
       }
     };
-    fetchDataIncidencia();
+
+    fetchIncidencias();
   }, []);
 
   useEffect(() => {
@@ -189,7 +195,7 @@ const CampoPage = () => {
 
   const { camaras } = useSocketCam();
   const { controlBodys } = useSocket();
-  const [conteoVehiculos, setConteoVehiculos] = useState({ moto: 0, camioneta: 0 });
+  const [conteoVehiculos, setConteoVehiculos] = useState({ motolibre: 0, camionetalibre: 0, camionetameta: 0, motometa: 0, Deltas: 0 });
 
   useEffect(() => {
     // console.log("controlBodys:", controlBodys);
@@ -208,7 +214,7 @@ const CampoPage = () => {
           <a href="/control_bodycam" target="_blank" rel="noopener noreferrer" className="hover:shadow-2xl hover:scale-105" >
             <Card
               title="Bodycams en Campo"
-              total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
+              total={(conteoVehiculos.camionetalibre + conteoVehiculos.motolibre) || 0}
             />
           </a>
           <Card title="Oriones libres"
@@ -222,14 +228,13 @@ const CampoPage = () => {
               }
               return acc;
             }, {}))}
-            total={conteoVehiculos.camioneta}
+            total={conteoVehiculos.camionetalibre}
             icon={Car}
           />
           <Card title="Oriones Meta"
-            total={conteoVehiculos.moto}
             data={Object.values(controlBodys.reduce((acc, item) => {
               if (item.status === "EN CAMPO") {
-                if (item.funcions?.funcion === "Sereno motorizado") {
+                if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
                   const jurisdiccion = item.Jurisdiccions?.jurisdiccion || "Desconocido";
                   acc[jurisdiccion] = acc[jurisdiccion] || { label: jurisdiccion, value: 0 };
                   acc[jurisdiccion].value += 1;
@@ -237,6 +242,7 @@ const CampoPage = () => {
               }
               return acc;
             }, {}))}
+            total={(conteoVehiculos.camionetameta) || 0}
           />
           <Card
             title="Hermes Meta"
@@ -250,7 +256,7 @@ const CampoPage = () => {
               }
               return acc;
             }, {}))}
-            total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
+            total={(conteoVehiculos.motometa) || 0}
           />
           <Card
             title="GIR"
@@ -264,7 +270,7 @@ const CampoPage = () => {
               }
               return acc;
             }, {}))}
-            total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
+            total={(conteoVehiculos.motolibre) || 0}
           />
           <Card
             title="Deltas"
@@ -278,7 +284,7 @@ const CampoPage = () => {
               }
               return acc;
             }, {}))}
-            total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
+            total={(conteoVehiculos.Deltas) || 0}
           />
           <a href="http://192.168.30.91:81/" target="_blank" rel="noopener noreferrer"  className="hover:shadow-2xl hover:scale-105" >
             <Card
@@ -287,20 +293,6 @@ const CampoPage = () => {
               icon={Camera}
             />
           </a>
-          <Card
-            title="Radios"
-            data={Object.values(controlBodys.reduce((acc, item) => {
-              if (item.status === "EN CAMPO") {
-                if (item.funcions?.funcion === "Sereno motorizado" || item.funcions?.funcion === "Sereno conductor") {
-                  const jurisdiccion = item.Jurisdiccions?.jurisdiccion || "Desconocido";
-                  acc[jurisdiccion] = acc[jurisdiccion] || { label: jurisdiccion, value: 0 };
-                  acc[jurisdiccion].value += 1;
-                }
-              }
-              return acc;
-            }, {}))}
-            total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
-          />
           <Card
             title="servidores"
             data={Object.values(controlBodys.reduce((acc, item) => {
@@ -313,7 +305,7 @@ const CampoPage = () => {
               }
               return acc;
             }, {}))}
-            total={(conteoVehiculos.camioneta + conteoVehiculos.moto) || 0}
+            total={(conteoVehiculos.camionetalibre + conteoVehiculos.motolibre) || 0}
           />
 
         </div>
