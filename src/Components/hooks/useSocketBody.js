@@ -15,14 +15,16 @@ const useSocketControlBody = (token) => {
 
     socketRef.current.on("connect", () => {
       console.log("✅ Conectado al servidor de WebSocket");
-      socketRef.current.emit("getAllControlBodysGeneral"); // Usar el nombre correcto del evento
+      socketRef.current.emit("getAllControlBodysGenerales"); // Usar el nombre correcto del evento
+      console.log(socketRef.current.emit("getAllControlBodysGenerales"));
     });
 
     // Escuchar la respuesta correcta del backend
-    socketRef.current.on("getAllControlBodysGeneralResponse", (response) => {
+    socketRef.current.on("getAllControlBodysGeneralesResponse", (response) => {
       if (response.status === 200) {
         //console.log("📡 Datos de Control Body recibidos:", response.data);
         setControlBodys(response.data);
+        console.log("📡 Datos de Control Body recibidos:", response);
       } else {
         console.error("❌ Error al obtener Control Bodies:", response.message);
       }
