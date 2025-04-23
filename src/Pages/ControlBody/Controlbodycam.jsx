@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import ArrowBackIosNewRoundedIcon from '@mui/icons-material/ArrowBackIosNewRounded';
 import CRUDTable from '../../Components/Table/CRUDTable';
 import { socket, authenticateSocket } from '../../Components/Socket/socket';
@@ -19,7 +19,8 @@ import {
   Menu,
   MenuItem,
   Chip,
-  Box
+  Box,
+  Button
 } from '@mui/material';
 import usePermissions from '../../Components/hooks/usePermission';
 import { useSelector } from 'react-redux';
@@ -27,104 +28,22 @@ import UseUrlParamsManager from '../../Components/hooks/UseUrlParamsManager';
 import AddBodycam from './AddBodycam';
 import MissingFieldsModal from './CustomModal';
 
-const ControlBody = ({ moduleName }) => {
-  const { canCreate } = usePermissions(moduleName);
-  const { token } = useSelector((state) => state.auth);
-  const { addParams, getParams } = UseUrlParamsManager();
-  const navigate = useNavigate();
-  const [allData, setAllData] = useState([]); // Store all data from server
-  const [filteredData, setFilteredData] = useState([]); // Data after filters applied
-  const [displayData, setDisplayData] = useState([]); // Data for current page
-  const [searchTerm, setSearchTerm] = useState(getParams('search') || '');
-  const [isSearching, setIsSearching] = useState(false);
-  const [totalCount, setTotalCount] = useState(0); // Total count from API
-  const [filteredCount, setFilteredCount] = useState(0); // Count after filters
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [openSnackbar, setOpenSnackbar] = useState(false);
-  const timeoutRef = useRef(null);
-  const [currentPage, setCurrentPage] = useState(parseInt(getParams('page')) || 1);
-  const [rowsPerPage, setRowsPerPage] = useState(parseInt(getParams('limit')) || 20);
-  const [socketReady, setSocketReady] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [selectedRowId, setSelectedRowId] = useState(null);
-
-  // Filter state
-  const [statusFilter, setStatusFilter] = useState(getParams('status') || '');
+// Componente mejorado de barra de búsqueda
+const EnhancedSearchBar = ({
+  searchValue,
+  onSearchChange,
+  currentStatusFilter,
+  onClearFilter,
+  availableStatuses,
+  onFilterSelect,
+  onClearAllFilters,
+  loading
+}) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const openMenu = Boolean(anchorEl);
+  const searchInputRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(false);
 
-  // Available statuses for filter
-  const availableStatuses = ['EN CAMPO', 'EN CECOM'];
-
-  // Update params from URL when component mounts
-  useEffect(() => {
-    const params = getParams();
-    const page = Number(params.page) || 1;
-    const limit = Number(params.limit) || 20;
-    const status = params.status || '';
-    const search = params.search || '';
-
-    setCurrentPage(page);
-    setRowsPerPage(limit);
-    setStatusFilter(status);
-    setSearchTerm(search);
-  }, [getParams]);
-
-  // Apply filters to the data
-  useEffect(() => {
-    if (allData.length > 0) {
-      // Filter by search term and status
-      let filtered = [...allData];
-
-      // Apply search filter if present
-      if (searchTerm.trim()) {
-        const lowerSearch = searchTerm.toLowerCase().trim();
-        filtered = filtered.filter(item => {
-          // Search across all object properties
-          return Object.values(item).some(val =>
-            String(val).toLowerCase().includes(lowerSearch)
-          );
-        });
-      }
-
-      // Apply status filter if present
-      if (statusFilter) {
-        filtered = filtered.filter(item => item.Estado === statusFilter);
-      }
-
-      setFilteredData(filtered);
-      setFilteredCount(filtered.length);
-
-      // Calculate paginated data
-      const startIndex = (currentPage - 1) * rowsPerPage;
-      const endIndex = startIndex + rowsPerPage;
-      setDisplayData(filtered.slice(startIndex, endIndex));
-    } else {
-      setFilteredData([]);
-      setFilteredCount(0);
-      setDisplayData([]);
-    }
-  }, [allData, statusFilter, searchTerm, currentPage, rowsPerPage]);
-
-  const handlePageChange = (event, newPage) => {
-    setCurrentPage(newPage + 1);
-    addParams({ page: newPage + 1 });
-  };
-
-  const handleRowsPerPageChange = (event) => {
-    const newLimit = parseInt(event.target.value);
-    setRowsPerPage(newLimit);
-    setCurrentPage(1); // Reset to first page when changing rows per page
-    addParams({ page: 1, limit: newLimit });
-  };
-
-  const handleRowClick = (e, row) => {
-    setSelectedRowId(row.id === selectedRowId ? null : row.id);
-  };
-
-  // Filter menu handlers
   const handleFilterClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -134,121 +53,187 @@ const ControlBody = ({ moduleName }) => {
   };
 
   const handleFilterSelect = (status) => {
-    setStatusFilter(status);
-    addParams({ status, page: 1 });
-    setCurrentPage(1);
+    onFilterSelect(status);
     handleMenuClose();
   };
 
-  const handleClearFilter = () => {
-    setStatusFilter('');
-    addParams({ status: '', page: 1 });
-    setCurrentPage(1);
-  };
-
-  // Process data from server
-  const handleUpdateControlBodys = useCallback((response) => {
-    if (response.status === 200 && response.data) {
-      let rows = response.data.data || [];
-      let count = response.data.totalCount || 0;
-
-      rows = rows.sort((a, b) => b.id - a.id);
-
-      const transformedRows = rows.map(row => ({
-        id: row.id,
-        bodyCams: row.bodyCams?.numero || row.id_Body || '',
-        Responsable: row.Personas ? `${row.Personas.nombres} ${row.Personas.apellidos}` : '',
-        "fecha de entrega": row.fecha_entrega || '',
-        "hora de entrega": row.hora_entrega || '',
-        turno: row.horarios?.turno || row.id_turno || '',
-        Jurisdiccion: row.Jurisdiccions?.jurisdiccion || '',
-        Unidad: row.Unidads?.numero || '',
-        funcion: row.funcions?.funcion || '',
-        "fecha de devolucion": row.fecha_devolucion || '',
-        "hora de devolucion": row.hora_devolucion || '',
-        detalles: row.detalles || '',
-        Estado: row.status || '',
-      }));
-
-      setAllData(transformedRows);
-      setDisplayData(transformedRows); // Set display data directly
-      setTotalCount(count);
-      setFilteredCount(count);
-    } else {
-      setAllData([]);
-      setDisplayData([]);
-      setTotalCount(0);
-      setFilteredCount(0);
-      setError(response.message || 'Error al cargar datos');
-      setOpenSnackbar(true);
-    }
-    setLoading(false);
-  }, []);
-
-  // Fetch data from server
-  const fetchInitialData = useCallback((searchValue=``) => {
-    setLoading(true);
-    setError(null);
-    socket.emit("getAllControlBodys", {
-      page: 1, // Get all records for client-side pagination
-      limit: 50, // Large limit to get all records
-      search: searchValue.trim()
-    });
-  }, []);
-
-  const handleSearchChange = (event) => {
-    const value = event.target.value;
-    setSearchTerm(value);
-
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    setIsSearching(value.trim() !== '');
-
-    timeoutRef.current = setTimeout(() => {
-      addParams({ search: value.trim(), page: 1 });
-      setCurrentPage(1);
-
-      if (socketReady) {
-        setLoading(true);
-        // For frontend filtering, we fetch all data again
-        fetchInitialData();
-      } else {
-        setError("No hay conexión con el servidor");
-        setOpenSnackbar(true);
-        setIsSearching(false);
-      }
-    });
-  };
-
   const handleClearSearch = () => {
-    setSearchTerm('');
-    addParams({ search: '', page: 1 });
-    setCurrentPage(1);
-    if (socketReady) {
-      setLoading(true);
-      fetchInitialData();
+    // En lugar de solo limpiar el texto, usamos la función para limpiar todos los filtros
+    onClearAllFilters();
+    
+    // Focus back to the search input after clearing
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
     }
   };
 
-  const handleRefresh = useCallback(() => {
-    if (socketReady) {
-      setLoading(true);
-      setError(null);
-      fetchInitialData();
-    } else {
-      setError("No hay conexión con el servidor. Espere a que se restablezca.");
-      setOpenSnackbar(true);
-    }
-  }, [socketReady, fetchInitialData]);
+  return (
+    <FormControl
+      variant="standard"
+      size="small"
+      className="w-full relative"
+      sx={{
+        "& .MuiInput-root": {
+          borderRadius: "4px",
+          transition: "all 0.2s ease",
+          pr: searchValue || currentStatusFilter ? 1 : 0,
+          "&:hover, &.Mui-focused": {
+            backgroundColor: "rgba(0, 0, 0, 0.04)"
+          }
+        }
+      }}
+    >
+      <InputLabel htmlFor="search-bodycam-input">Buscar bodycam</InputLabel>
+      <Input
+        id="search-bodycam-input"
+        value={searchValue}
+        onChange={onSearchChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        inputRef={searchInputRef}
+        startAdornment={
+          <InputAdornment position="start">
+            <SearchIcon color={searchValue ? "primary" : "action"} />
+          </InputAdornment>
+        }
+        endAdornment={
+          <InputAdornment position="end" className="flex items-center gap-1">
+            
+            {/* Botón para limpiar búsqueda */}
+            {searchValue && (
+              <IconButton
+                aria-label="clear search"
+                onClick={handleClearSearch}
+                edge="end"
+                size="small"
+                sx={{ p: 0.5 }}
+              >
+                <ClearIcon fontSize="small" />
+              </IconButton>
+            )}
 
-  const handleCloseSnackbar = (event, reason) => {
-    if (reason === 'clickaway') return;
-    setOpenSnackbar(false);
-  };
+            {/* Botón de filtro */}
+            <Tooltip title="Filtrar por estado" placement="top" arrow>
+              <IconButton
+                aria-label="filter"
+                onClick={handleFilterClick}
+                color={currentStatusFilter ? "primary" : "default"}
+                size="small"
+                sx={{ p: 0.5 }}
+              >
+                <FilterListIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </InputAdornment>
+        }
+        placeholder="Número, responsable, turno..."
+        sx={{
+          pl: 1,
+          pr: 0.5,
+          transition: "all 0.3s ease",
+          backgroundColor: isFocused ? "rgba(0, 0, 0, 0.04)" : "transparent",
+        }}
+      />
 
-  // Socket connection setup
+      {/* Menú de filtros */}
+      <Menu
+        anchorEl={anchorEl}
+        open={openMenu}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem disabled>
+          <Box sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+            Filtrar por estado
+          </Box>
+        </MenuItem>
+        {availableStatuses.map((status) => (
+          <MenuItem
+            key={status}
+            onClick={() => handleFilterSelect(status)}
+            selected={currentStatusFilter === status}
+          >
+            {status}
+          </MenuItem>
+        ))}
+
+        <MenuItem
+          onClick={onClearAllFilters}
+          disabled={!searchValue && !currentStatusFilter}
+          divider
+        >
+          <Box sx={{ color: 'error.main' }}>Limpiar todos los filtros</Box>
+        </MenuItem>
+      </Menu>
+
+
+    </FormControl>
+  );
+};
+
+// Componente memoizado para mejorar rendimiento
+const FilterStatusChip = memo(({ status, onClear }) => (
+  <Chip
+    label={`Estado: ${status}`}
+    color="primary"
+    variant="outlined"
+    onDelete={onClear}
+    size="small"
+    className="ml-2"
+  />
+));
+
+const ControlBody = ({ moduleName }) => {
+  const { canCreate } = usePermissions(moduleName);
+  const { token } = useSelector((state) => state.auth);
+  const { addParams, getParams, removeParams } = UseUrlParamsManager();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Estados principales
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [count, setCount] = useState(0);
+
+  // Estados de UI
+  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [socketReady, setSocketReady] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Estado para el campo de búsqueda
+  const [searchInputValue, setSearchInputValue] = useState('');
+
+  // Para debounce de búsqueda
+  const timeoutRef = useRef(null);
+
+  // Constantes
+  const availableStatuses = ['EN CAMPO', 'EN CECOM'];
+
+  // Obtener parámetros actuales de la URL
+  const urlParams = new URLSearchParams(location.search);
+  const currentPage = parseInt(urlParams.get('page') || '1');
+  const rowsPerPage = parseInt(urlParams.get('limit') || '20');
+  const currentSearchTerm = urlParams.get('search') || '';
+  const currentStatusFilter = urlParams.get('status') || '';
+
+  // Inicializar estados desde URL al montar
+  useEffect(() => {
+    setSearchInputValue(currentSearchTerm);
+    setIsSearching(!!currentSearchTerm);
+  }, []);
+
+  // Inicializar conexión de socket
   useEffect(() => {
     const handleConnect = () => {
       console.log("✅ Socket conectado exitosamente");
@@ -289,93 +274,231 @@ const ControlBody = ({ moduleName }) => {
     };
   }, [token]);
 
-  // Socket event listeners
+  // Procesar datos recibidos del servidor
+  const handleUpdateControlBodys = useCallback((response) => {
+    if (response?.status === 200 && response?.data) {
+      const rows = response.data.data || [];
+      const totalCount = response.data.totalCount || 0;
+
+      // Transformar datos
+      const transformedRows = rows
+        .sort((a, b) => b.id - a.id)
+        .map(row => ({
+          id: row.id,
+          bodyCams: row.bodyCams?.numero || row.id_Body || '',
+          Responsable: row.nombres && row.apellidos ? `${row.nombres} ${row.apellidos}` : '',
+          "fecha de entrega": row.fecha_entrega || '',
+          "hora de entrega": row.hora_entrega || '',
+          turno: row.horarios?.turno || row.id_turno || '',
+          Jurisdiccion: row.Jurisdiccions?.jurisdiccion || '',
+          Unidad: row.Unidads?.numero || '',
+          funcion: row.funcion || '',
+          "fecha de devolucion": row.fecha_devolucion || '',
+          "hora de devolucion": row.hora_devolucion || '',
+          detalles: row.detalles || '',
+          Estado: row.status || '',
+        }));
+
+      setData(transformedRows);
+      setCount(totalCount);
+      setLoading(false);
+    } else {
+      setData([]);
+      setCount(0);
+      setError(response?.message || 'Error al cargar datos');
+      setOpenSnackbar(true);
+      setLoading(false);
+    }
+  }, []);
+
+  // Obtener datos del servidor con parámetros
+  const fetchData = useCallback(() => {
+    if (!socketReady) {
+      setError("No hay conexión con el servidor");
+      setOpenSnackbar(true);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    // Crear objeto con parámetros actuales de la URL
+    const apiParams = {
+      page: currentPage,
+      limit: rowsPerPage,
+      search: currentSearchTerm,
+      status: currentStatusFilter
+    };
+
+    console.log("Enviando parámetros al servidor:", apiParams);
+    // Enviar getAllbodycamsfilter para búsqueda global
+    socket.emit("getAllbodycamsfilter", apiParams);
+  }, [socketReady, currentPage, rowsPerPage, currentSearchTerm, currentStatusFilter]);
+
+  // Configurar listeners de socket
+  useEffect(() => {
+    if (!socketReady) return;
+
+    // Cargar datos iniciales cuando el socket está listo
+    fetchData();
+
+    // Manejadores de respuestas de socket
+    const handleSocketResponse = (response) => {
+      if (typeof response !== "object" || response === null) {
+        console.error("❌ Respuesta inválida del servidor:", response);
+        setError("Respuesta inválida del servidor");
+        setOpenSnackbar(true);
+        setLoading(false);
+        return;
+      }
+
+      handleUpdateControlBodys(response);
+    };
+
+    const handleBodycamActualizada = (response) => {
+      if (response?.status === 200) {
+        fetchData();
+      } else {
+        setError(response?.message || "Error en la actualización");
+        setOpenSnackbar(true);
+      }
+    };
+
+    // Configurar listeners
+    socket.on("getAllbodycamsfilterResponse", handleSocketResponse);
+    socket.on("getAllControlBodysResponse", handleSocketResponse);
+    socket.on("ControlBodys", handleUpdateControlBodys);
+    socket.on("bodycamActualizada", handleBodycamActualizada);
+    socket.on("controlBodysUpdated", fetchData);
+    socket.on("ActualizarControlBodysResponse", (response) => {
+      if (response?.status === 200) {
+        fetchData();
+        setOpenSnackbar(true);
+        setError(null);
+      } else {
+        setError(response?.message || "Error al actualizar el control de bodycam");
+        setOpenSnackbar(true);
+      }
+    });
+    socket.on("newControlBodyAdded", fetchData);
+
+    // Limpieza
+    return () => {
+      socket.off("getAllbodycamsfilterResponse", handleSocketResponse);
+      socket.off("getAllControlBodysResponse", handleSocketResponse);
+      socket.off("ControlBodys", handleUpdateControlBodys);
+      socket.off("bodycamActualizada", handleBodycamActualizada);
+      socket.off("controlBodysUpdated");
+      socket.off("ActualizarControlBodysResponse");
+      socket.off("newControlBodyAdded");
+    };
+  }, [socketReady, fetchData, handleUpdateControlBodys]);
+
+  // Recargar cuando cambia la URL
   useEffect(() => {
     if (socketReady) {
-      fetchInitialData();
-
-      const handleResponse = (response) => {
-        if (typeof response !== "object" || response === null) {
-          console.error("❌ Respuesta inválida del servidor:", response);
-          setError("Respuesta inválida del servidor");
-          setOpenSnackbar(true);
-          setLoading(false);
-          return;
-        }
-
-        if (response.status === 200) {
-          handleUpdateControlBodys(response);
-        } else {
-          console.error("⚠️ Error al obtener ControlBodys:", response.message);
-          setError(response.message || "Error al obtener datos");
-          setOpenSnackbar(true);
-          setLoading(false);
-        }
-      };
-
-      const handleBodycamActualizada = (response) => {
-        if (response.status === 200) {
-          handleRefresh();
-        } else {
-          setError(response.message || "Error en la actualización");
-          setOpenSnackbar(true);
-        }
-      };
-
-      const handleControlBodysUpdated = () => {
-        fetchInitialData();
-      };
-
-      const handleActualizarControlBodysResponse = (response) => {
-        if (response && response.status === 200) {
-          handleRefresh();
-          setOpenSnackbar(true);
-          setError(null);
-        } else {
-          setError(response?.message || "Error al actualizar el control de bodycam");
-          setOpenSnackbar(true);
-        }
-      };
-
-      const handleNewControlBodyAdded = (response) => {
-        if (response && response.data) {
-          handleRefresh();
-        }
-      };
-
-      socket.on("getAllControlBodysResponse", handleResponse);
-      socket.on("ControlBodys", handleUpdateControlBodys);
-      socket.on("bodycamActualizada", handleBodycamActualizada);
-      socket.on("controlBodysUpdated", handleControlBodysUpdated);
-      socket.on("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
-      socket.on("newControlBodyAdded", handleNewControlBodyAdded);
-
-      return () => {
-        socket.off("getAllControlBodysResponse", handleResponse);
-        socket.off("ControlBodys", handleUpdateControlBodys);
-        socket.off("bodycamActualizada", handleBodycamActualizada);
-        socket.off("controlBodysUpdated", handleControlBodysUpdated);
-        socket.off("ActualizarControlBodysResponse", handleActualizarControlBodysResponse);
-        socket.off("newControlBodyAdded", handleNewControlBodyAdded);
-      };
+      fetchData();
     }
-  }, [socketReady, handleUpdateControlBodys, fetchInitialData, handleRefresh]);
+  }, [location.search, socketReady, fetchData]);
 
-  // Cleanup timeout on unmount
+  // Limpieza del timeout al desmontar
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  // Modal handling for edit
+  // Manejadores de paginación
+  const handlePageChange = (event, newPageIndex) => {
+    const page = newPageIndex + 1;
+    addParams({ page });
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    const newLimit = parseInt(event.target.value);
+    addParams({ page: 1, limit: newLimit });
+  };
+
+  // Manejador de clic en fila
+  const handleRowClick = (e, row) => {
+    setSelectedRowId(prevId => prevId === row.id ? null : row.id);
+  };
+
+  // Manejadores de menú de filtro
+  const handleFilterSelect = (status) => {
+    addParams({ status, page: 1 });
+  };
+
+  const handleClearFilter = () => {
+    const currentParams = { ...getParams() };
+    delete currentParams.status;
+    addParams({ ...currentParams, page: 1 });
+  };
+
+  // Manejador de cambio en búsqueda con debounce
+  const handleSearchChange = (event) => {
+    const value = event.target.value;
+    setSearchInputValue(value);
+    setIsSearching(value !== '');
+
+    // Limpiar timeout anterior si existe
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Debounce para reducir llamadas
+    timeoutRef.current = setTimeout(() => {
+      if (value.trim() === '') {
+        const currentParams = { ...getParams() };
+        delete currentParams.search;
+        addParams({ ...currentParams, page: 1 });
+      } else {
+        addParams({ search: value.trim(), page: 1 });
+      }
+    }, 500); // Tiempo de debounce
+  };
+
+  // Limpiar búsqueda
+  const handleClearSearch = () => {
+    setSearchInputValue('');
+    setIsSearching(false);
+
+    const currentParams = { ...getParams() };
+    delete currentParams.search;
+    addParams({ ...currentParams, page: 1 });
+  };
+
+  // Refrescar datos
+  const handleRefresh = () => {
+    if (socketReady) {
+      fetchData();
+    } else {
+      setError("No hay conexión con el servidor. Espere a que se restablezca.");
+      setOpenSnackbar(true);
+    }
+  };
+
+  // Limpiar todos los filtros
+  const handleClearAllFilters = () => {
+    setSearchInputValue('');
+    setIsSearching(false);
+    removeParams();
+  };
+
+  // Cerrar Snackbar
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setOpenSnackbar(false);
+  };
+
+  // Manejadores para el modal de edición
   const handleEditMissing = (row) => {
     setSelectedRow(row);
     setModalOpen(true);
   };
 
   const handleModalSave = (updatedData) => {
-    if (!selectedRow || !selectedRow.id) {
+    if (!selectedRow?.id) {
       setError("No se pudo identificar el registro de control a actualizar");
       setOpenSnackbar(true);
       setModalOpen(false);
@@ -392,7 +515,6 @@ const ControlBody = ({ moduleName }) => {
       status: updatedData.status
     };
 
-    // Add numero_unidad to payload if provided
     if (updatedData.numero_unidad) {
       payload.numero_unidad = updatedData.numero_unidad;
     }
@@ -400,7 +522,7 @@ const ControlBody = ({ moduleName }) => {
     socket.emit("ActualizarControlBodys", payload, (response) => {
       setLoading(false);
 
-      if (response && response.status === 200) {
+      if (response?.status === 200) {
         setError(null);
         setOpenSnackbar(true);
       } else {
@@ -426,55 +548,10 @@ const ControlBody = ({ moduleName }) => {
         <div className='flex flex-col md:flex-row justify-between pb-4 gap-3 flex-shrink-0'>
           <div className='flex items-center gap-2'>
             <span className='text-gray-600'>
-              Total de filas: <span id="rowCount" className='font-bold'>{filteredCount || 0}</span>
+              Total de filas: <span id="rowCount" className='font-bold'>{count || 0}</span>
             </span>
-
-            {/* Mostrar chip de filtro activo */}
-            {statusFilter && (
-              <Chip
-                label={`Estado: ${statusFilter}`}
-                color="primary"
-                variant="outlined"
-                onDelete={handleClearFilter}
-                size="small"
-                className="ml-2"
-              />
-            )}
           </div>
-          <div className='flex items-center justify-end gap-3'>
-            {/* Botón de filtro por estado */}
-            <Tooltip title="Filtrar por estado" placement='top' arrow>
-              <span>
-                <IconButton
-                  aria-label="filter"
-                  onClick={handleFilterClick}
-                  color={statusFilter ? "primary" : "default"}
-                >
-                  <FilterListIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-
-            {/* Menú de filtros */}
-            <Menu
-              anchorEl={anchorEl}
-              open={openMenu}
-              onClose={handleMenuClose}
-            >
-              {availableStatuses.map((status) => (
-                <MenuItem
-                  key={status}
-                  onClick={() => handleFilterSelect(status)}
-                  selected={statusFilter === status}
-                >
-                  {status}
-                </MenuItem>
-              ))}
-              <MenuItem onClick={handleClearFilter}>
-                <Box sx={{ color: 'text.secondary' }}>Limpiar filtro</Box>
-              </MenuItem>
-            </Menu>
-
+          <div className='flex items-center justify-end gap-3 w-full md:w-auto'>
             <Tooltip title="Refrescar" placement='top' arrow>
               <span>
                 <IconButton
@@ -486,60 +563,31 @@ const ControlBody = ({ moduleName }) => {
                 </IconButton>
               </span>
             </Tooltip>
-            <FormControl variant="standard" size='small' className='w-full max-w-full md:max-w-sm'>
-              <InputLabel htmlFor="input-with-icon-adornment">Buscar bodycam</InputLabel>
-              <Input
-                id="input-with-icon-adornment"
-                value={searchTerm}
-                onChange={handleSearchChange}
-                startAdornment={
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                }
-                endAdornment={
-                  searchTerm && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="clear search"
-                        onClick={handleClearSearch}
-                        edge="end"
-                        size="small"
-                      >
-                        <ClearIcon fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }
-                placeholder="Buscar bodycam"
-              />
-            </FormControl>
 
-            {searchTerm && (
-              <div className='flex items-center justify-start px-2 py-1 bg-blue-50 rounded-md text-sm text-blue-700 flex-shrink-0'>
-                <span className='font-medium'>Búsqueda activa:</span>
-                <span className='ml-1'>{searchTerm}</span>
-                <Tooltip title="Limpiar búsqueda" placement='top' arrow>
-                  <IconButton
-                    size="small"
-                    onClick={handleClearSearch}
-                    aria-label="clear search"
-                    className='ml-1'
-                  >
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </div>
-            )}
+            {/* Nuevo componente de búsqueda mejorado */}
+            <div className="w-full md:w-80">
+              <EnhancedSearchBar
+                searchValue={searchInputValue}
+                onSearchChange={handleSearchChange}
+                onClearSearch={handleClearSearch}
+                currentStatusFilter={currentStatusFilter}
+                onClearFilter={handleClearFilter}
+                availableStatuses={availableStatuses}
+                onFilterSelect={handleFilterSelect}
+                onClearAllFilters={handleClearAllFilters}
+                loading={loading}
+              />
+            </div>
+
             {canCreate && <AddBodycam currentPage={currentPage} />}
           </div>
         </div>
 
         <div className='flex-1 relative overflow-hidden'>
           <CRUDTable
-            data={displayData}
+            data={data}
             loading={loading}
-            count={filteredCount}
+            count={count}
             onEdit={handleEditMissing}
             currentPage={currentPage - 1}
             onPageChange={handlePageChange}
@@ -547,9 +595,9 @@ const ControlBody = ({ moduleName }) => {
             onRowsPerPageChange={handleRowsPerPageChange}
             pagination={true}
             filter={true}
-            activeFilter={statusFilter}
+            activeFilter={currentStatusFilter}
             rowOnClick={handleRowClick}
-            selectedRowId={selectedRowId}  // Añade esta prop
+            selectedRowId={selectedRowId}
           />
         </div>
       </div>
@@ -577,4 +625,4 @@ const ControlBody = ({ moduleName }) => {
   );
 };
 
-export default ControlBody;
+export default memo(ControlBody);
