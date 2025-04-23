@@ -54,8 +54,8 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
     };
 
     // Only include numero_unidad if it was changed
-    if (numeroUnidad !== rowData.Unidad && numeroUnidad.trim() !== '') {
-      payload.numero_unidad = numeroUnidad;
+    if (numeroUnidad && numeroUnidad.trim() !== '') {
+      payload.numero_unidad = numeroUnidad.trim();
     }
 
     onSave(payload);
@@ -66,16 +66,47 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: 2 }}>
-        <Typography variant="h6" component="div">
+    <Dialog 
+      open={open} 
+      onClose={(event, reason) => {
+        // Prevents closing the dialog when clicking outside or pressing escape
+        if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+          return;
+        }
+        handleClose();
+      }} 
+      maxWidth="sm" 
+      fullWidth
+      disableEscapeKeyDown={true}
+      PaperProps={{
+        sx: {
+          borderRadius: 2, // Aquí está el cambio principal - borde redondeado
+          overflow: 'hidden',
+          maxHeight: '85vh'
+        }
+      }}
+    >
+      <DialogTitle 
+        sx={{ 
+          bgcolor: '#1b5e20', // Verde oscuro como en el otro modal
+          borderBottom: '1px solid #e0e0e0', 
+          padding: 2,
+          color: '#fff', // Texto en blanco
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <Typography variant="h6" component="div" fontWeight="bold" textAlign="center">
           Actualizar Bodycam
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
+        <Typography variant="subtitle1" color="#fff" textAlign="center">
           {rowData?.bodyCams}
         </Typography>
       </DialogTitle>
-      <DialogContent sx={{ padding: 3 }}>
+      
+      <DialogContent sx={{ padding: 3, overflow: 'auto' }}>
         <Box sx={{ marginBottom: 2 }}>
           <Typography variant="body2" color="text.secondary" gutterBottom>
             Fecha y hora actuales se registrarán automáticamente
@@ -91,15 +122,28 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
           multiline
           rows={3}
           sx={{ marginBottom: 2 }}
+          size="small"
+          InputProps={{
+            style: { fontSize: "0.875rem" },
+          }}
+          InputLabelProps={{
+            style: { fontSize: "0.875rem" },
+          }}
         />
         
-        <FormControl fullWidth margin="dense" sx={{ marginBottom: 2 }}>
-          <InputLabel id="status-label">Status</InputLabel>
+        <FormControl 
+          fullWidth 
+          margin="dense" 
+          sx={{ marginBottom: 2 }}
+          size="small"
+        >
+          <InputLabel id="status-label" sx={{ fontSize: "0.875rem" }}>Status</InputLabel>
           <Select
             labelId="status-label"
             value={status}
             label="Status"
             onChange={handleInputChange(setStatus)}
+            sx={{ fontSize: "0.875rem" }}
           >
             <MenuItem value="EN CAMPO">EN CAMPO</MenuItem>
             <MenuItem value="EN CECOM">EN CECOM</MenuItem>
@@ -113,23 +157,60 @@ const BodycamUpdateModal = ({ open, onClose, rowData, onSave, loading }) => {
           fullWidth
           margin="dense"
           helperText="Opcional: Actualizar el número de unidad"
+          size="small"
+          InputProps={{
+            style: { fontSize: "0.875rem" },
+          }}
+          InputLabelProps={{
+            style: { fontSize: "0.875rem" },
+          }}
         />
       </DialogContent>
-      <DialogActions sx={{ padding: 2, borderTop: '1px solid #e0e0e0' }}>
+      
+      <DialogActions 
+        sx={{ 
+          padding: 3, 
+          borderTop: '1px solid #e0e0e0',
+          backgroundColor: '#f9f9f9', // Fondo gris claro como en el otro modal
+          display: 'flex',
+          justifyContent: 'space-between'
+        }}
+      >
         <Button 
           onClick={handleClose} 
           disabled={loading}
           variant="outlined"
+          color="error"
+          sx={{
+            textTransform: "none",
+            borderRadius: 1,
+            px: 3,
+            py: 1,
+            fontSize: "0.875rem",
+            fontWeight: "bold"
+          }}
         >
-          CANCELAR
+          Cancelar
         </Button>
         <Button
           onClick={handleSave}
           variant="contained"
-          color="primary"
+          color="success" // Usar success en lugar de primary
           disabled={loading}
+          sx={{
+            textTransform: "none",
+            borderRadius: 1,
+            px: 3,
+            py: 1,
+            fontSize: "0.875rem",
+            fontWeight: "bold",
+            backgroundColor: "#2e7d32", // Verde específico
+            "&:hover": {
+              backgroundColor: "#1b5e20", // Verde oscuro al hover
+            }
+          }}
         >
-          {loading ? <CircularProgress size={24} /> : 'GUARDAR'}
+          {loading ? <CircularProgress size={24} /> : 'Guardar'}
         </Button>
       </DialogActions>
     </Dialog>

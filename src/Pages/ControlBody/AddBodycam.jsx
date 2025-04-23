@@ -13,9 +13,10 @@ import {
   InputLabel,
   FormHelperText,
   InputAdornment,
-  Chip,
-  Stack,
-  Divider
+  Divider,
+  RadioGroup,
+  Radio,
+  FormControlLabel
 } from "@mui/material";
 import dayjs from "dayjs";
 import "dayjs/locale/es";
@@ -46,6 +47,16 @@ const JURISDICCIONES = [
   "Bayovar",
   "10 de Octubre",
   "Mariscal Caceres",
+];
+
+// Prefijos para el número de bodycam
+const PREFIJOS_BODYCAM = ["SG", "fisca"];
+
+// Opciones para la unidad
+const OPCIONES_UNIDAD = [
+  { value: "O-", label: "Orion" },
+  { value: "H-", label: "Hermes" },
+  { value: "DELTA", label: "DELTA" }
 ];
 
 // Cargar variables desde el .env
@@ -79,13 +90,19 @@ const obtenerTurnoActual = () => {
   return "NOCHE";
 };
 
-
 const AgregarControlBodycam = ({ currentPage = 1 }) => {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [bodycams, setBodycams] = useState([
-    { numero: "", jurisdiccion: "", unidad: "" }
+    {
+      prefijo: "SG",
+      numero: "",
+      jurisdiccion: "",
+      tipoUnidad: "O-",
+      numeroUnidad: "",
+      unidadCompleta: "O-"
+    }
   ]);
 
   const toggleHelp = () => {
@@ -105,7 +122,14 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
           );
           // Limpiar el formulario
           formik.resetForm();
-          setBodycams([{ numero: "", jurisdiccion: "", unidad: "" }]);
+          setBodycams([{
+            prefijo: "SG",
+            numero: "",
+            jurisdiccion: "",
+            tipoUnidad: "O-",
+            numeroUnidad: "",
+            unidadCompleta: "O-"
+          }]);
           // Actualizar la lista usando la página actual
           socket.emit("getAllControlBodys", {
             page: currentPage,
@@ -133,7 +157,14 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
 
   const handleClose = () => {
     formik.resetForm();
-    setBodycams([{ numero: "", jurisdiccion: "", unidad: "" }]);
+    setBodycams([{
+      prefijo: "SG",
+      numero: "",
+      jurisdiccion: "",
+      tipoUnidad: "O-",
+      numeroUnidad: "",
+      unidadCompleta: "O-"
+    }]);
     setOpen(false);
     setShowHelp(false);
   };
@@ -155,34 +186,34 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
         "turno",
         "funcion",
       ];
-      
+
       camposRequeridos.forEach((campo) => {
         if (!values[campo]) {
           errors[campo] = "Campo requerido";
         }
       });
-      
+
       if (values.dni && !/^\d+$/.test(values.dni)) {
         errors.dni = "El DNI debe contener solo números";
       }
-      
+
       // Validar que haya al menos una bodycam con datos completos
       const bodycamIncompleta = bodycams.some(
-        (bc) => !bc.numero || !bc.jurisdiccion || !bc.unidad
+        (bc) => !bc.numero || !bc.jurisdiccion || !bc.unidadCompleta
       );
-      
+
       if (bodycamIncompleta) {
         errors.bodycams = "Todas las bodycams deben tener número, jurisdicción y unidad";
       }
-      
+
       return errors;
     },
     onSubmit: (values) => {
       // Verificar si hay bodycams incompletas
       const bodycamIncompleta = bodycams.some(
-        (bc) => !bc.numero || !bc.jurisdiccion || !bc.unidad
+        (bc) => !bc.numero || !bc.jurisdiccion || !bc.unidadCompleta
       );
-      
+
       if (bodycamIncompleta) {
         CustomSwal.fire(
           "Error",
@@ -202,11 +233,13 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
 
       // Por cada bodycam, crear una solicitud separada
       bodycams.forEach((bodycam) => {
+        const numeroCompleto = `${bodycam.prefijo}${bodycam.numero}`;
+
         const datosEnvio = {
           ...values,
-          numeros: [bodycam.numero.trim()],
+          numeros: [numeroCompleto],
           jurisdiccion: bodycam.jurisdiccion,
-          unidad: bodycam.unidad,
+          unidad: bodycam.unidadCompleta,
           fecha_entrega: fechaEntrega,
           hora_entrega: horaEntrega,
           status: "EN CAMPO",
@@ -242,7 +275,51 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
     }
   };
 
-  // Manejo de cambios en los campos de bodycam
+  // Manejar cambio de prefijo para bodycam
+  const handlePrefijoCambio = (index, prefijo) => {
+    const nuevasBodycams = [...bodycams];
+    nuevasBodycams[index].prefijo = prefijo;
+    setBodycams(nuevasBodycams);
+  };
+
+  // Manejar cambio de número para bodycam
+  const handleNumeroCambio = (index, numero) => {
+    const nuevasBodycams = [...bodycams];
+    nuevasBodycams[index].numero = numero;
+    setBodycams(nuevasBodycams);
+  };
+
+  // Manejar cambio de tipo de unidad
+  const handleTipoUnidadCambio = (index, tipo) => {
+    const nuevasBodycams = [...bodycams];
+    nuevasBodycams[index].tipoUnidad = tipo;
+
+    // Si el tipo es DELTA, no se requiere número
+    if (tipo === "DELTA") {
+      nuevasBodycams[index].numeroUnidad = "";
+      nuevasBodycams[index].unidadCompleta = "DELTA";
+    } else {
+      // Para O- y H-, actualizar la unidad completa
+      nuevasBodycams[index].unidadCompleta = `${tipo}${nuevasBodycams[index].numeroUnidad}`;
+    }
+
+    setBodycams(nuevasBodycams);
+  };
+
+  // Manejar cambio de número de unidad
+  const handleNumeroUnidadCambio = (index, numero) => {
+    const nuevasBodycams = [...bodycams];
+    nuevasBodycams[index].numeroUnidad = numero;
+
+    // No actualizar si es DELTA
+    if (nuevasBodycams[index].tipoUnidad !== "DELTA") {
+      nuevasBodycams[index].unidadCompleta = `${nuevasBodycams[index].tipoUnidad}${numero}`;
+    }
+
+    setBodycams(nuevasBodycams);
+  };
+
+  // Manejo de cambios en los campos de bodycam tradicionales
   const handleBodycamChange = (index, field, value) => {
     const nuevasBodycams = [...bodycams];
     nuevasBodycams[index][field] = value;
@@ -251,7 +328,14 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
 
   // Agregar una nueva bodycam
   const agregarBodycam = () => {
-    setBodycams([...bodycams, { numero: "", jurisdiccion: "", unidad: "" }]);
+    setBodycams([...bodycams, {
+      prefijo: "SG",
+      numero: "",
+      jurisdiccion: "",
+      tipoUnidad: "O-",
+      numeroUnidad: "",
+      unidadCompleta: "O-"
+    }]);
   };
 
   // Eliminar una bodycam
@@ -270,7 +354,7 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
         </IconButton>
       </Tooltip>
 
-      <CustomModal Open={open} setOpen={setOpen} handleClose={handleClose}>
+      <CustomModal Open={open} setOpen={setOpen} handleClose={handleClose} onlyCloseFromButton={true}>
         {/* Contenido del modal sin márgenes/padding externos */}
         <Box sx={{
           width: "100%",
@@ -300,8 +384,8 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
           </Box>
 
           {/* Contenido del formulario - área scrollable */}
-          <Box sx={{ 
-            p: 3, 
+          <Box sx={{
+            p: 3,
             overflow: "auto", // Habilitar el scroll
             flexGrow: 1 // Permitir que este contenedor crezca y se encoja
           }}>
@@ -427,7 +511,7 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
                     size="small"
                     onClick={agregarBodycam}
                     startIcon={<AddIcon />}
-                    sx={{ 
+                    sx={{
                       textTransform: "none",
                       fontSize: "0.75rem"
                     }}
@@ -445,18 +529,19 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
                     border: "1px dashed #4caf50"
                   }}>
                     <Typography variant="caption">
-                      Ingrese los datos para cada bodycam. Puede agregar múltiples bodycams usando el botón "Agregar bodycam".
+                      Ingrese los datos para cada bodycam. Seleccione el prefijo (SG o fisca) y agregue el número.
+                      Para la unidad, seleccione el tipo (O-, H- o DELTA) y el número correspondiente cuando sea necesario.
                     </Typography>
                   </Box>
                 )}
 
                 {bodycams.map((bodycam, index) => (
-                  <Box 
-                    key={index} 
-                    sx={{ 
-                      border: "1px solid #e0e0e0", 
-                      p: 2, 
-                      borderRadius: 1, 
+                  <Box
+                    key={index}
+                    sx={{
+                      border: "1px solid #e0e0e0",
+                      p: 2,
+                      borderRadius: 1,
                       mb: 2,
                       backgroundColor: "#f9f9f9"
                     }}
@@ -466,9 +551,9 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
                         Bodycam #{index + 1}
                       </Typography>
                       {bodycams.length > 1 && (
-                        <IconButton 
-                          size="small" 
-                          color="error" 
+                        <IconButton
+                          size="small"
+                          color="error"
                           onClick={() => eliminarBodycam(index)}
                           sx={{ p: 0.5 }}
                         >
@@ -477,67 +562,131 @@ const AgregarControlBodycam = ({ currentPage = 1 }) => {
                       )}
                     </Box>
 
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, gap: 1 }}>
-                      <TextField
-                        label="Número"
-                        placeholder="Ej: SG001"
-                        value={bodycam.numero}
-                        onChange={(e) => handleBodycamChange(index, "numero", e.target.value)}
-                        fullWidth
-                        error={!bodycam.numero && formik.touched.bodycams}
-                        variant="outlined"
-                        size="small"
-                        InputProps={{
-                          style: { fontSize: "0.875rem" },
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <VideocamIcon color="primary" fontSize="small" />
-                            </InputAdornment>
-                          ),
-                        }}
-                        InputLabelProps={{
-                          style: { fontSize: "0.875rem" },
-                        }}
-                      />
+                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr", gap: 2 }}>
+                      {/* Fila 1: Número y Jurisdicción */}
+                      <Box sx={{ display: "flex", gap: 2 }}>
+                        {/* Campo Número con prefijo */}
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" sx={{ mb: 0.5, display: "block", fontWeight: "medium" }}>
+                            Número
+                          </Typography>
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <FormControl size="small" sx={{ minWidth: "100px", mr: 1 }}>
+                              <Select
+                                value={bodycam.prefijo}
+                                onChange={(e) => handlePrefijoCambio(index, e.target.value)}
+                                sx={{
+                                  fontSize: "0.875rem",
+                                  height: "40px",
+                                  "& .MuiSelect-select": {
+                                    overflow: "visible"
+                                  }
+                                }}
+                              >
+                                {PREFIJOS_BODYCAM.map((prefijo) => (
+                                  <MenuItem key={prefijo} value={prefijo}>
+                                    {prefijo}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <TextField
+                              placeholder="001"
+                              value={bodycam.numero}
+                              onChange={(e) => handleNumeroCambio(index, e.target.value)}
+                              size="small"
+                              fullWidth
+                              error={!bodycam.numero && formik.touched.bodycams}
+                              InputProps={{
+                                style: { fontSize: "0.875rem" },
+                                startAdornment: (
+                                  <InputAdornment position="start">
+                                    <VideocamIcon color="primary" fontSize="small" />
+                                  </InputAdornment>
+                                ),
+                              }}
+                            />
+                          </Box>
+                        </Box>
 
-                      <FormControl
-                        fullWidth
-                        error={!bodycam.jurisdiccion && formik.touched.bodycams}
-                        size="small"
-                      >
-                        <InputLabel id={`jurisdiccion-label-${index}`} sx={{ fontSize: "0.875rem" }}>
-                          Jurisdicción
-                        </InputLabel>
-                        <Select
-                          labelId={`jurisdiccion-label-${index}`}
-                          value={bodycam.jurisdiccion}
-                          onChange={(e) => handleBodycamChange(index, "jurisdiccion", e.target.value)}
-                          label="Jurisdicción"
-                          sx={{ fontSize: "0.875rem" }}
-                        >
-                          {JURISDICCIONES.map((jurisdiccion) => (
-                            <MenuItem key={`${index}-${jurisdiccion}`} value={jurisdiccion}>
-                              {jurisdiccion}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                        {/* Jurisdicción */}
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" sx={{ mb: 0.5, display: "block", fontWeight: "medium" }}>
+                            Jurisdicción
+                          </Typography>
+                          <FormControl
+                            fullWidth
+                            error={!bodycam.jurisdiccion && formik.touched.bodycams}
+                            size="small"
+                          >
+                            <Select
+                              value={bodycam.jurisdiccion}
+                              onChange={(e) => handleBodycamChange(index, "jurisdiccion", e.target.value)}
+                              sx={{ fontSize: "0.875rem", height: "40px" }}
+                              displayEmpty
+                              renderValue={(selected) => {
+                                if (!selected) return <em>Seleccione jurisdicción</em>;
+                                return selected;
+                              }}
+                            >
+                              <MenuItem disabled value="">
+                                <em>Seleccione jurisdicción</em>
+                              </MenuItem>
+                              {JURISDICCIONES.map((jurisdiccion) => (
+                                <MenuItem key={`${index}-${jurisdiccion}`} value={jurisdiccion}>
+                                  {jurisdiccion}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      </Box>
 
-                      <TextField
-                        label="Unidad"
-                        value={bodycam.unidad}
-                        onChange={(e) => handleBodycamChange(index, "unidad", e.target.value)}
-                        fullWidth
-                        error={!bodycam.unidad && formik.touched.bodycams}
-                        variant="outlined"
-                        size="small"
-                        InputProps={{
-                          style: { fontSize: "0.875rem" },
-                        }}
-                        InputLabelProps={{
-                          style: { fontSize: "0.875rem" },
-                        }}
-                      />
+                      {/* Fila 2: Unidad */}
+                      <Box>
+                        <Typography variant="caption" sx={{ mb: 0.5, display: "block", fontWeight: "medium" }}>
+                          Unidad
+                        </Typography>
+                        <Box sx={{
+                          display: "flex",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 2
+                        }}>
+                          {/* Opciones de radio buttons horizontales */}
+                          <RadioGroup
+                            row
+                            value={bodycam.tipoUnidad}
+                            onChange={(e) => handleTipoUnidadCambio(index, e.target.value)}
+                            sx={{ flexWrap: "nowrap" }}
+                          >
+                            {OPCIONES_UNIDAD.map((opcion) => (
+                              <FormControlLabel
+                                key={opcion.value}
+                                value={opcion.value}
+                                control={<Radio size="small" />}
+                                label={<Typography variant="body2">{opcion.label}</Typography>}
+                                sx={{ marginRight: 1 }}
+                              />
+                            ))}
+                          </RadioGroup>
+
+                          {/* Campo numérico para O- y H- */}
+                          {(bodycam.tipoUnidad === "O-" || bodycam.tipoUnidad === "H-") && (
+                            <TextField
+                              placeholder="Número"
+                              value={bodycam.numeroUnidad}
+                              onChange={(e) => handleNumeroUnidadCambio(index, e.target.value)}
+                              size="small"
+                              sx={{ width: "120px", ml: 1 }}
+                              error={bodycam.tipoUnidad !== "DELTA" && !bodycam.numeroUnidad && formik.touched.bodycams}
+                              InputProps={{
+                                style: { fontSize: "0.875rem" },
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </Box>
                     </Box>
                   </Box>
                 ))}
