@@ -194,7 +194,7 @@ const BaseDatos = ({ moduleName }) => {
     };
 
     const handleDisconnect = () => {
-      console.warn("⚠️ Socket desconectado");
+      console.warn("⚠ Socket desconectado");
       setSocketReady(false);
       setError("Se ha perdido la conexión con el servidor");
       setOpenSnackbar(true);
@@ -268,7 +268,7 @@ const BaseDatos = ({ moduleName }) => {
     }
 
     console.log("Enviando parámetros al servidor:", apiParams);
-    socket.emit("getAllBodys", apiParams);
+    socket.emit("getAllbodyfilter", apiParams);
   }, [socketReady, currentPage, rowsPerPage, currentSearchTerm, currentMarkFilter]);
 
   // Configurar listeners de socket
@@ -301,8 +301,8 @@ const BaseDatos = ({ moduleName }) => {
     };
 
     // Configurar listeners
-    //socket.on("getAllBodysResponse", handleSocketResponse);
-    //socket.on("listaallbodys", handleUpdateBodyCams);
+    socket.on("getAllBodysResponse", handleSocketResponse);
+    socket.on("listaallbodys", handleUpdateBodyCams);
     socket.on("getAllRegistrofilterResponse", (response) => {
       console.log("💾 Datos recibidos del backend:", response);
       handleSocketResponse(response);
@@ -319,7 +319,7 @@ const BaseDatos = ({ moduleName }) => {
 
     // Limpieza
     return () => {
-      socket.off("getAllBodysResponse", handleSocketResponse);
+      socket.off("getAllRegistrofilterResponse", handleSocketResponse);
       socket.off("listaallbodys", handleUpdateBodyCams);
       socket.off("bodyCamRegistrada");
       socket.off("bodyCamActualizada", handleBodyCamActualizada);
